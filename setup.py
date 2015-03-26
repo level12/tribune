@@ -17,7 +17,6 @@ develop_requires = [
     'Flask-WebTest',
     'wrapt',
     'xlrd',
-    'xlwt',
 ]
 
 cdir = osp.abspath(osp.dirname(__file__))
