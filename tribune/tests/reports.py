@@ -92,16 +92,16 @@ class DealershipReportRow(SheetUnit):
 
 class DealershipTotalRow(DealershipReportRow):
     def format_label(self):
-        return self.sheet.combine_styles(
+        return self.sheet.combine_style_dicts(
             self.sheet.style_header,
             self.sheet.style_right,
-            {'border': (('top', 6), )}
+            {'top': 6}
         )
 
     def format_component(self):
-        return self.sheet.combine_styles(
+        return self.sheet.combine_style_dicts(
             self.sheet.style_currency,
-            {'border': (('top', 6), )}
+            {'top': 6}
         )
 
     def format_income(self):

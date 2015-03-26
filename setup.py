@@ -48,7 +48,7 @@ setup(
     include_package_data=True,
     install_requires=[
         'BlazeUtils',
-        'xlwt',
+        'xlsxwriter',
     ],
     entry_points="""
         [console_scripts]

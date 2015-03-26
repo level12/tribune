@@ -1,10 +1,11 @@
 import operator
+from StringIO import StringIO
 
 from blazeutils.datastructures import BlankObject
-from blazeutils.spreadsheets import workbook_to_reader
+from blazeutils.spreadsheets import xlsx_to_reader
 import mock
 import pytest
-from xlwt import Workbook, Worksheet
+from xlsxwriter import Workbook
 
 from tribune import SheetColumn, LabeledColumn, ReportSheet, ProgrammingError
 from .reports import CarSheet, CarModelSection, CarDealerSheet
@@ -32,18 +33,18 @@ dealer_data = lambda s: [
 class TestSheetDecl(object):
     @mock.patch('tribune.tests.reports.CarSheet.fetch_records', car_data)
     def test_sheet_units(self):
-        sheet = CarSheet(Workbook())
+        sheet = CarSheet(Workbook(StringIO()))
         assert len(sheet.units) == 4
 
     @mock.patch('tribune.tests.reports.CarSheet.fetch_records', car_data)
     def test_section_units(self):
-        sheet = CarSheet(Workbook())
+        sheet = CarSheet(Workbook(StringIO()))
         section = sheet.units[1]
         assert len(section.units) == 3
 
     @mock.patch('tribune.tests.reports.CarSheet.fetch_records')
     def test_filter_args(self, m_fetch):
-        sheet = CarSheet(Workbook(), filter_arg_a='foo', filter_arg_b='bar')
+        sheet = CarSheet(Workbook(StringIO()), filter_arg_a='foo', filter_arg_b='bar')
         m_fetch.assert_called_once_with(arg_a='foo', arg_b='bar')
 
 
@@ -103,7 +104,7 @@ class TestSheetColumn(object):
             fetch_records = lambda x: []
             SheetColumn('key', header_2='foo', header_4='bar')
 
-        sheet = TestSheet(Workbook())
+        sheet = TestSheet(Workbook(StringIO()))
         col = sheet.units[0]
         assert col.header_data == ['', '', 'foo', '', 'bar']
 
@@ -114,7 +115,7 @@ class TestSheetColumn(object):
             SheetColumn('key', header_2='foo', header_4='bar')
 
         with pytest.raises(ProgrammingError) as exc_info:
-            TestSheet(Workbook())
+            TestSheet(Workbook(StringIO()))
         assert 'not enough pre-data rows on sheet' in str(exc_info)
 
     def test_width(self):
@@ -140,10 +141,10 @@ class TestLabeledColumn(object):
 class TestOutput(object):
     @mock.patch('tribune.tests.reports.CarSheet.fetch_records', car_data)
     def generate_report(self):
-        wb = Workbook()
-        ws = wb.add_sheet(CarSheet.sheet_name)
+        wb = Workbook(StringIO())
+        ws = wb.add_worksheet(CarSheet.sheet_name)
         CarSheet(wb, worksheet=ws)
-        book = workbook_to_reader(wb)
+        book = xlsx_to_reader(wb)
         return book.sheet_by_name('Car Info')
 
     def test_header(self):
@@ -177,11 +178,10 @@ class TestOutput(object):
 class TestPortraitOutput(object):
     @mock.patch('tribune.tests.reports.CarDealerSheet.fetch_records', dealer_data)
     def generate_report(self):
-        wb = Workbook()
-        ws = wb.add_sheet(CarDealerSheet.sheet_name)
+        wb = Workbook(StringIO())
+        ws = wb.add_worksheet(CarDealerSheet.sheet_name)
         CarDealerSheet(wb, worksheet=ws)
-        # wb.save('foo.xls')
-        book = workbook_to_reader(wb)
+        book = xlsx_to_reader(wb)
         return book.sheet_by_name('Dealership Summary')
 
     def test_header(self):

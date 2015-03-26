@@ -2,8 +2,8 @@ from decimal import Decimal
 import inspect
 import sys
 
-from blazeutils.spreadsheets import Writer
-from xlwt import Alignment, Worksheet, Workbook, Formula
+from blazeutils.spreadsheets import WriterX
+from xlsxwriter.format import Format
 
 __all__ = [
     'SheetUnit',
@@ -128,7 +128,8 @@ class SheetColumn(SheetUnit):
     def xls_width_calc(self, value):
         if self.xls_width:
             return self.xls_width
-        if isinstance(value, Formula):
+        if isinstance(value, basestring) and len(value) and value[0] == '=':
+            # formulas start with an equals
             return 0
         if isinstance(value, basestring):
             return len(value)
@@ -151,7 +152,7 @@ class SheetColumn(SheetUnit):
             # width calculation is 1/256th of width of zero character, using the
             # first font that occurs in the Excel file
             # the following calculation seems to get it done alright
-            self.sheet.ws.col(self.col_idx).width = int((final_width + 3) * 256)
+            self.sheet.ws.set_column(self.col_idx, self.col_idx, int(final_width + 3))
 
     def fetch_val(self, record, key):
         if key is None:
@@ -167,7 +168,7 @@ class SheetColumn(SheetUnit):
                 self.fetch_val(record, key[0]),
                 self.fetch_val(record, key[1])
             )
-        elif not isinstance(key, (basestring, int, float, Decimal, Formula)):
+        elif not isinstance(key, (basestring, int, float, Decimal)):
             # must be a SA-col, find the key and hit the record
             datakey = getattr(key, 'key', getattr(key, 'name', None))
             val = getattr(record, datakey)
@@ -248,11 +249,11 @@ class TotaledMixin(object):
             self.sheet.awrite('', self.format_total())
             return
         self.sheet.awrite(
-            Formula('SUM({0}{1}:{0}{2})'.format(
+            '=SUM({0}{1}:{0}{2})'.format(
                 column_letter(self.sheet.colnum),
                 sum_begin,
                 sum_end
-            )),
+            ),
             self.format_total()
         )
 
@@ -311,16 +312,17 @@ class SheetSection(SheetUnit):
             u.adjust_col_width()
 
 
-class ReportSheet(SheetSection, Writer):
+class ReportSheet(SheetSection, WriterX):
     freeze = None
     pre_data_rows = 0
     sheet_name = None
 
     def __init__(self, parent_book, worksheet=None, **kwargs):
+        self.parent_book = parent_book
         if not worksheet:
-            worksheet = Worksheet(self.sheet_name, parent_book)
-        Writer.__init__(self, ws=worksheet)
-        self.set_base_styles()
+            worksheet = parent_book.add_worksheet(self.sheet_name)
+        WriterX.__init__(self, ws=worksheet)
+        self.set_base_style_dicts()
 
         # fetch records first, as units may need some data for initialization
         filter_args = dict([
@@ -348,31 +350,31 @@ class ReportSheet(SheetSection, Writer):
     def fontsize(self, pt):
         return pt * 20
 
-    def set_base_styles(self):
-        self.style_title = {'font': (('bold', True), ('height', self.fontsize(14)),)}
-        self.style_header = {'font': (('bold', True),),}
-        self.style_row_header = {'font': (('bold', True), ), 'border': (('bottom', 1), )}
-        self.style_row_pct = {'format': '0.00%'}
-        self.style_row_pct_round = {'format': '0%'}
-        self.style_row_totals = {'font': (('bold', True), ), 'border': (('top', 1), )}
-        self.style_row_totals_pct = {
-            'font': (('bold', True), ),
-            'border': (('top', 1), ),
-            'format': '0.00%'
-        }
-        self.style_italic = {'font': (('italic', True),),}
-        self.style_date_mdy = {'format': 'M/D/YYYY'}
-        self.style_numeric = {'format': '#,##0.00'}
-        self.style_pct = {'format': '0.00%'}
-        self.style_left = {'alignment': (('horz', Alignment.HORZ_LEFT),)}
-        self.style_center = {'alignment': (('horz', Alignment.HORZ_CENTER),)}
-        self.style_right = {'alignment': (('horz', Alignment.HORZ_RIGHT),)}
-        self.style_currency = {'format': '$* #,##0.00;[Red]$* (#,##0.00);$* -  ;'}
+    def add_format_to_workbook(self, fmt):
+        # attach a Format object to the workbook, if it has not been already
+        if fmt.xf_format_indices is None:
+            fmt.xf_format_indices = self.parent_book.xf_format_indices
+            fmt.dxf_format_indices = self.parent_book.dxf_format_indices
+            self.parent_book.formats.append(fmt)
 
-    def fetch_records(self, **kwargs):
-        raise NotImplementedError
+    def set_base_style_dicts(self):
+        self.style_title = {'bold': True, 'font_size': 14}
+        self.style_header = {'bold': True}
+        self.style_row_header = {'bold': True, 'bottom': 1}
+        self.style_row_pct = {'num_format': '0.00%'}
+        self.style_row_pct_round = {'num_format': '0%'}
+        self.style_row_totals = {'bold': True, 'top': 1}
+        self.style_row_totals_pct = {'bold': True, 'top': 1, 'num_format': '0.00%'}
+        self.style_italic = {'italic': True}
+        self.style_date_mdy = {'num_format': 'M/D/YYYY'}
+        self.style_numeric = {'num_format': '#,##0.00'}
+        self.style_pct = {'num_format': '0.00%'}
+        self.style_left = {'align': 'left'}
+        self.style_center = {'align': 'center'}
+        self.style_right = {'align': 'right'}
+        self.style_currency = {'num_format': '$* #,##0.00;[Red]$* (#,##0.00);$* -  ;'}
 
-    def combine_styles(self, *args):
+    def combine_style_dicts(self, *args):
         # takes dicts such as those defined in set_base_styles, combines
         #   left-to-right, returns dict
         def add_dicts(a, b):
@@ -387,15 +389,19 @@ class ReportSheet(SheetSection, Writer):
             style = add_dicts(style, s)
         return style
 
+    def fetch_records(self, **kwargs):
+        raise NotImplementedError
+
     def freeze_pane(self, col, row):
         self.ws.panes_frozen = True
         self.ws.vert_split_pos = col
         self.ws.horz_split_pos = row
 
     def write_simple_merge(self, num_cols, data, style=None):
-        # shorthand for Writer.write_merge, for merge on single row
-        self.write_merge(self.rownum, self.rownum, self.colnum,
-                         self.colnum + num_cols - 1, data, style)
+        # shorthand for WriterX.write_merge, for merge on single row
+        self.merge_range(self.rownum, self.colnum, self.rownum,
+                         self.colnum + num_cols - 1)
+        self.write(self.rownum, self.colnum, data, style)
         self.colnum += num_cols
 
     def write_sheet_header(self):
@@ -411,22 +417,32 @@ class ReportSheet(SheetSection, Writer):
         # should result in performance upgrade, constant time lookup on locked_cells
         self.locked_cells = set(self.locked_cells)
 
+    def conform_style(self, style):
+        if isinstance(style, dict):
+            # styles can be either an xlsxwriter Format or a dict
+            style = Format(style)
+            self.add_format_to_workbook(style)
+        return style
+
     def write(self, row, col, data, style=None):
-        # wraps Writer.write, checks row,col tuple against guarded cells
+        # wraps WriterX.write, checks row,col tuple against guarded cells
         if (row, col) not in self.locked_cells:
-            Writer.write(self, row, col, data, style)
+            self.ws.write(row, col, data, self.conform_style(style))
+
+    def awrite(self, data, style=None, nextrow=False):
+        super(ReportSheet, self).awrite(data, style=self.conform_style(style), nextrow=nextrow)
 
     def render_header(self):
         for i in range(self.pre_data_rows):
             for u in self.units:
                 u.write_header(i)
-            self.newrow()
+            self.nextrow()
 
     def render_data(self):
         for r in self.records:
             for u in self.units:
                 u.write_data(r)
-            self.newrow()
+            self.nextrow()
 
     def render_total(self):
         for u in self.units:
@@ -477,7 +493,7 @@ class ReportPortraitSheet(ReportSheet):
         #   and the sheet can move to the next row
         for u in self.units:
             if u.render():
-                self.newrow()
+                self.nextrow()
 
         # columns have tracked the necessary widths, set here
         for c in self.columns.values():
