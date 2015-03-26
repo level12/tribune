@@ -1,0 +1,6 @@
+syntax: glob
+*.komodo*
+*.pyc
+*.egg-info
+dist/*
+stage/*
