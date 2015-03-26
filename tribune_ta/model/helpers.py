@@ -3,6 +3,7 @@ import datetime as dt
 from blazeutils.decorators import curry
 from blazeutils.helpers import tolist
 from blazeutils.strings import randchars
+import six
 import sqlalchemy as sa
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.inspection import inspect as sa_inspect
@@ -44,7 +45,7 @@ def _is_unique_msg(dialect, msg):
         if 'is not unique' in msg or 'are not unique' in msg:
             return True
     else:
-        raise ValueError('is_unique_exc() does not yet support dialect: %s' % dialect)
+        raise ValueError('is_unique_exc() does not yet support dialect: {0}'.format(dialect))
     return False
 
 
@@ -66,7 +67,7 @@ def _is_check_const(dialect, msg, constraint_name):
         if 'violates check constraint' in msg and constraint_name in msg:
             return True
     else:
-        raise ValueError('is_constraint_exc() does not yet support dialect: %s' % dialect)
+        raise ValueError('is_constraint_exc() does not yet support dialect: {0}'.format(dialect))
     return False
 
 
@@ -82,16 +83,16 @@ def _is_null_msg(dialect, msg, field_name):
         easier unit testing this way
     """
     if dialect == 'mssql':
-        if 'Cannot insert the value NULL into column \'%s\'' % field_name in msg:
+        if 'Cannot insert the value NULL into column \'{0}\''.format(field_name) in msg:
             return True
     elif dialect == 'sqlite':
-        if '.%s may not be NULL' % field_name in msg:
+        if '.{0} may not be NULL'.format(field_name) in msg:
             return True
     elif dialect == 'postgresql':
-        if 'null value in column "%s" violates not-null constraint' % field_name in msg:
+        if 'null value in column "{0}" violates not-null constraint'.format(field_name) in msg:
             return True
     else:
-        raise ValueError('is_null_exc() does not yet support dialect: %s' % dialect)
+        raise ValueError('is_null_exc() does not yet support dialect: {0}'.format(dialect))
     return False
 
 
@@ -148,7 +149,7 @@ def ignore_unique(f, decorated_obj, args, kwargs):
     dbsess = _find_sa_sess(decorated_obj)
     try:
         return f(*args, **kwargs)
-    except Exception, e:
+    except Exception as e:
         dbsess.rollback()
         if is_unique_exc(e):
                 return
@@ -171,7 +172,7 @@ def one_to_none(f, _, args, kwargs):
     """
     try:
         return f(*args, **kwargs)
-    except NoResultFound, e:
+    except NoResultFound as e:
         if 'No row was found for one()' != str(e):
             raise
         return None
@@ -379,7 +380,7 @@ class MethodsMixin(object):
 
         mapper = saorm.object_mapper(self)
 
-        for key, value in data.iteritems():
+        for key, value in six.iteritems(data):
             if isinstance(value, dict):
                 dbvalue = getattr(self, key)
                 rel_class = mapper.get_property(key).mapper.class_
@@ -449,7 +450,7 @@ class LookupMixin(DefaultMixin):
     @classmethod
     def testing_create(cls, label=None, active=True):
         if label is None:
-            label = u'%s %s' % (cls.__name__, randchars(5))
+            label = u'{0} {1}'.format(cls.__name__, randchars(5))
         return cls.add(label=label, active_flag=active)
 
     @classmethod
@@ -476,21 +477,21 @@ class LookupMixin(DefaultMixin):
         return cls.get_by(label=label)
 
     def __repr__(self):
-        return '<%s %s:%s>' % (self.__class__.__name__, self.id, self.label)
+        return '<{0} {1}:{2}>'.format(self.__class__.__name__, self.id, self.label)
 
 def clear_db():
     if db.engine.dialect.name == 'postgresql':
         sql = []
         sql.append('DROP SCHEMA public cascade;')
-        sql.append('CREATE SCHEMA public AUTHORIZATION %s;' % db.engine.url.username)
-        sql.append('GRANT ALL ON SCHEMA public TO %s;' % db.engine.url.username)
+        sql.append('CREATE SCHEMA public AUTHORIZATION {0};'.format(db.engine.url.username))
+        sql.append('GRANT ALL ON SCHEMA public TO {0};'.format(db.engine.url.username))
         sql.append('GRANT ALL ON SCHEMA public TO public;')
         sql.append("COMMENT ON SCHEMA public IS 'standard public schema';")
         for exstr in sql:
             try:
                 db.engine.execute(exstr)
-            except Exception, e:
-                print 'WARNING: %s' % e
+            except Exception as e:
+                print('WARNING: {0}'.format(e))
     elif db.engine.dialect.name == 'sqlite':
         # drop the views
         sql = "select name from sqlite_master where type='view'"
@@ -499,32 +500,32 @@ def clear_db():
         # we will get "database locked" errors from sqlite
         records = rows.fetchall()
         for row in records:
-            db.engine.execute('drop view %s' % row['name'])
+            db.engine.execute('drop view {0}'.format(row['name']))
 
         # drop the tables
         db.metadata.reflect(bind=db.engine)
         for table in reversed(db.metadata.sorted_tables):
             try:
                 table.drop(db.engine)
-            except Exception, e:
+            except Exception as e:
                 if not 'no such table' in str(e):
                     raise
     elif db.engine.dialect.name == 'mssql':
         mapping = {
-            'P': 'drop procedure [%(name)s]',
-            'C': 'alter table [%(parent_name)s] drop constraint [%(name)s]',
-            ('FN', 'IF', 'TF'): 'drop function [%(name)s]',
-            'V': 'drop view [%(name)s]',
-            'F': 'alter table [%(parent_name)s] drop constraint [%(name)s]',
-            'U': 'drop table [%(name)s]',
+            'P': 'drop procedure [{name}]',
+            'C': 'alter table [{parent_name}] drop constraint [{name}]',
+            ('FN', 'IF', 'TF'): 'drop function [{name}]',
+            'V': 'drop view [{name}]',
+            'F': 'alter table [{parent_name}] drop constraint [{name}]',
+            'U': 'drop table [{name}]',
         }
         delete_sql = []
-        for type, drop_sql in mapping.iteritems():
+        for type, drop_sql in six.iteritems(mapping):
             sql = 'select name, object_name( parent_object_id ) as parent_name '\
-                'from sys.objects where type in (\'%s\')' % '", "'.join(type)
+                'from sys.objects where type in (\'{0}\')'.format('", "'.join(type))
             rows = db.engine.execute(sql)
             for row in rows:
-                delete_sql.append(drop_sql % dict(row))
+                delete_sql.append(drop_sql.format(dict(row)))
         for sql in delete_sql:
             db.engine.execute(sql)
     else:

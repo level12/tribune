@@ -3,6 +3,7 @@ import inspect
 import sys
 
 from blazeutils.spreadsheets import WriterX
+import six
 from xlsxwriter.format import Format
 
 __all__ = [
@@ -100,7 +101,7 @@ class SheetColumn(SheetUnit):
         # key can be one of many types: str, Decimal, int, float, SA column,
         #   or a tuple of the above (with an operator)
         self.expr = None
-        if key is not None and not isinstance(key, (basestring, tuple, Decimal, int, float)):
+        if key is not None and not isinstance(key, (str, tuple, Decimal, int, float)):
             self.expr = col = key
             # use column.key, column.name, or None in that order
             key = getattr(col, 'key', getattr(col, 'name', None))
@@ -112,13 +113,13 @@ class SheetColumn(SheetUnit):
 
         # look for header values in kwargs, construct a header dict
         self._init_header = dict()
-        for k, v in kwargs.iteritems():
+        for k, v in six.iteritems(kwargs):
             if k.startswith('header_'):
                 self._init_header[int(k[7:])] = v
 
     def _construct_header_data(self, init_header):
         d = ['' for i in range(self.sheet.pre_data_rows)]
-        for k, v in init_header.iteritems():
+        for k, v in six.iteritems(init_header):
             try:
                 d[k] = v
             except IndexError:
@@ -128,10 +129,10 @@ class SheetColumn(SheetUnit):
     def xls_width_calc(self, value):
         if self.xls_width:
             return self.xls_width
-        if isinstance(value, basestring) and len(value) and value[0] == '=':
+        if isinstance(value, str) and len(value) and value[0] == '=':
             # formulas start with an equals
             return 0
-        if isinstance(value, basestring):
+        if isinstance(value, str):
             return len(value)
         return len(str(value))
 
@@ -157,9 +158,9 @@ class SheetColumn(SheetUnit):
     def fetch_val(self, record, key):
         if key is None:
             return ''
-        elif isinstance(key, basestring) and hasattr(record, key):
+        elif isinstance(key, str) and hasattr(record, key):
             return getattr(record, key)
-        elif isinstance(key, basestring) and (isinstance(record, dict) and key in record):
+        elif isinstance(key, str) and (isinstance(record, dict) and key in record):
             return record[key]
         elif isinstance(key, tuple):
             # magic way to combine data fields in a cell. tuple is expected as
@@ -168,7 +169,7 @@ class SheetColumn(SheetUnit):
                 self.fetch_val(record, key[0]),
                 self.fetch_val(record, key[1])
             )
-        elif not isinstance(key, (basestring, int, float, Decimal)):
+        elif not isinstance(key, (str, int, float, Decimal)):
             # must be a SA-col, find the key and hit the record
             datakey = getattr(key, 'key', getattr(key, 'name', None))
             val = getattr(record, datakey)
@@ -326,7 +327,7 @@ class ReportSheet(SheetSection, WriterX):
 
         # fetch records first, as units may need some data for initialization
         filter_args = dict([
-            (k[7:], v) for k, v in kwargs.iteritems() if k[:7] == 'filter_'
+            (k[7:], v) for k, v in six.iteritems(kwargs) if k[:7] == 'filter_'
         ])
         self.records = self.fetch_records(**filter_args)
 
@@ -378,7 +379,7 @@ class ReportSheet(SheetSection, WriterX):
         # takes dicts such as those defined in set_base_styles, combines
         #   left-to-right, returns dict
         def add_dicts(a, b):
-            return dict(a.items() + b.items() + [(k, a[k] + b[k]) for k in set(b) & set(a)])
+            return dict(list(a.items()) + list(b.items()) + [(k, a[k] + b[k]) for k in set(b) & set(a)])
 
         style = args[0]
         if len(args) == 1:
