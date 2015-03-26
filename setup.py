@@ -10,7 +10,6 @@ except ImportError:
 develop_requires = [
     'SQLAlchemy',
     'mock',
-    'nose',
     'pytest',
     'Flask',
     'Flask-Bootstrap',
