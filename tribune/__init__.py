@@ -400,9 +400,8 @@ class ReportSheet(SheetSection, WriterX):
 
     def write_simple_merge(self, num_cols, data, style=None):
         # shorthand for WriterX.write_merge, for merge on single row
-        self.merge_range(self.rownum, self.colnum, self.rownum,
-                         self.colnum + num_cols - 1)
-        self.write(self.rownum, self.colnum, data, style)
+        self.ws.merge_range(self.rownum, self.colnum, self.rownum,
+                         self.colnum + num_cols - 1, data, self.conform_style(style))
         self.colnum += num_cols
 
     def write_sheet_header(self):
