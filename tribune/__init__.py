@@ -181,7 +181,7 @@ class SheetColumn(SheetUnit):
     def extract_data(self, record):
         return self.fetch_val(record, self.key)
 
-    def format_data(self):
+    def format_data(self, value=None):
         return None
 
     def format_header(self, header_row):
@@ -202,7 +202,7 @@ class SheetColumn(SheetUnit):
     def write_data(self, record):
         val = self.extract_data(record)
         self.register_col_width(val)
-        self.sheet.awrite(val, self.format_data())
+        self.sheet.awrite(val, self.format_data(val))
 
     def write_total(self):
         self.sheet.awrite('', self.format_total())
@@ -368,6 +368,7 @@ class ReportSheet(SheetSection, WriterX):
         self.style_row_totals_pct = {'bold': True, 'top': 1, 'num_format': '0.00%'}
         self.style_italic = {'italic': True}
         self.style_date_mdy = {'num_format': 'M/D/YYYY'}
+        self.style_int = {'num_format': '#,##0'}
         self.style_numeric = {'num_format': '#,##0.00'}
         self.style_pct = {'num_format': '0.00%'}
         self.style_left = {'align': 'left'}
@@ -394,9 +395,7 @@ class ReportSheet(SheetSection, WriterX):
         raise NotImplementedError
 
     def freeze_pane(self, col, row):
-        self.ws.panes_frozen = True
-        self.ws.vert_split_pos = col
-        self.ws.horz_split_pos = row
+        self.ws.freeze_panes(row, col)
 
     def write_simple_merge(self, num_cols, data, style=None):
         # shorthand for WriterX.write_merge, for merge on single row
