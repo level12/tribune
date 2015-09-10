@@ -115,7 +115,10 @@ class SheetColumn(SheetUnit):
         self._init_header = dict()
         for k, v in six.iteritems(kwargs):
             if k.startswith('header_'):
-                self._init_header[int(k[7:])] = v
+                try:
+                    self._init_header[int(k[7:])] = v
+                except ValueError:
+                    pass
 
     def _construct_header_data(self, init_header):
         d = ['' for i in range(self.sheet.pre_data_rows)]
