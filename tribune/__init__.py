@@ -412,7 +412,8 @@ class ReportSheet(WriterX, SheetSection):
         # takes dicts such as those defined in set_base_styles, combines
         #   left-to-right, returns dict
         def add_dicts(a, b):
-            return dict(list(a.items()) + list(b.items()) + [(k, a[k] + b[k]) for k in set(b) & set(a)])
+            return dict(list(a.items()) + list(b.items()) +
+                        [(k, a[k] + b[k]) for k in set(b) & set(a)])
 
         style = args[0]
         if len(args) == 1:
