@@ -182,13 +182,13 @@ class SheetColumn(SheetUnit):
     def format_total(self):
         return None
 
-    def write_header(self, header_row):
+    def write_header(self):
         # set the column index to be used for adjustment of width
         # and write the stored header data from init
         self.col_idx = self.sheet.colnum
-        val = self.header_data[header_row]
+        val = self.header_data[self.sheet.rownum]
         self.register_col_width(val)
-        self.sheet.awrite(val, self.format_header(header_row))
+        self.sheet.awrite(val, self.format_header(self.sheet.rownum))
 
     def write_data(self, record):
         val = self.extract_data(record)
@@ -205,7 +205,7 @@ class SheetPortraitColumn(SheetColumn):
         (as that will change from row to row), but tracks column width needed
     """
     def __init__(self, record=None, *args, **kwargs):
-        SheetColumn.__init__(self, *args, **kwargs)
+        super(SheetPortraitColumn, self).__init__(*args, **kwargs)
         self.xls_computed_width = 0
         self.record = record
 
@@ -229,7 +229,7 @@ class LabeledColumn(SheetColumn):
             label_rows = label.split('\n')
             for i_row, label_string in enumerate(label_rows):
                 kwargs['header_{0}'.format(self.header_start_row + i_row)] = label_string
-        SheetColumn.__init__(self, key=key, **kwargs)
+        super(LabeledColumn, self).__init__(key=key, **kwargs)
 
 
 class PortraitRow(SheetUnit):
@@ -313,14 +313,11 @@ class SheetSection(SheetUnit):
             section.units.append(new_unit)
         return section
 
-    def __init__(self, *args, **kwargs):
-        return super(SheetSection, self).__init__()
-
-    def write_header(self, header_row):
+    def write_header(self):
         # track starting column and then delegate to subunits
         self.col_idx = self.sheet.colnum
         for u in self.units:
-            u.write_header(header_row)
+            u.write_header()
 
     def write_data(self, record):
         # delegate to subunits
@@ -338,7 +335,7 @@ class SheetSection(SheetUnit):
             u.adjust_col_width()
 
 
-class ReportSheet(SheetSection, WriterX):
+class ReportSheet(WriterX, SheetSection):
     freeze = None
     pre_data_rows = 0
     sheet_name = None
@@ -347,7 +344,7 @@ class ReportSheet(SheetSection, WriterX):
         self.parent_book = parent_book
         if not worksheet:
             worksheet = parent_book.add_worksheet(self.sheet_name)
-        WriterX.__init__(self, ws=worksheet)
+        super(ReportSheet, self).__init__(ws=worksheet)
         self.set_base_style_dicts()
 
         # fetch records first, as units may need some data for initialization
@@ -459,7 +456,7 @@ class ReportSheet(SheetSection, WriterX):
     def render_header(self):
         for i in range(self.pre_data_rows):
             for u in self.units:
-                u.write_header(i)
+                u.write_header()
             self.nextrow()
 
     def render_data(self):
@@ -489,7 +486,7 @@ class ReportPortraitSheet(ReportSheet):
 
     def __init__(self, *args, **kwargs):
         kwargs['auto_render'] = False
-        ReportSheet.__init__(self, *args, **kwargs)
+        super(ReportPortraitSheet, self).__init__(*args, **kwargs)
 
         self.columns = self.init_columns()
 
