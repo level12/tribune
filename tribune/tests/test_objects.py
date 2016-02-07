@@ -47,10 +47,15 @@ class TestSheetDecl(object):
         assert len(section.units) == 3
 
     @mock.patch('tribune.tests.reports.CarSheet.fetch_records', car_data)
-    def test_attribute_values_passed_to_instance(self):
+    def test_attribute_values_passed_to_section_instance(self):
         sheet = CarSheet(Workbook(BytesIO()))
         car_model_section = sheet.units[1]
         assert car_model_section.foo == 'bar'
+
+    @mock.patch('tribune.tests.reports.CarSheet.fetch_records', car_data)
+    def test_attribute_values_passed_to_column_instance(self):
+        sheet = CarSheet(Workbook(BytesIO()))
+        car_model_section = sheet.units[1]
         car_year_column = car_model_section.units[0]
         assert car_year_column.xls_width == 15
 
@@ -168,27 +173,39 @@ class TestOutput(object):
         assert ws.cell_value(0, 0) == 'Cars'
 
     def test_column_headings(self):
+        def checkit(ws, row, column, value):
+            assert ws.cell_value(row, column) == value
+
         ws = self.generate_report()
-        assert ws.cell_value(2, 0) == ''
-        assert ws.cell_value(2, 1) == 'Year'
-        assert ws.cell_value(2, 2) == 'Make'
-        assert ws.cell_value(2, 3) == 'Model'
-        assert ws.cell_value(2, 4) == 'Style'
-        assert ws.cell_value(2, 5) == 'Color'
-        assert ws.cell_value(2, 6) == 'Blue'
-        assert ws.cell_value(3, 6) == 'Book'
+        for row, column, value in [
+            (2, 0, ''),
+            (2, 1, 'Year'),
+            (2, 2, 'Make'),
+            (2, 3, 'Model'),
+            (2, 4, 'Style'),
+            (2, 5, 'Color'),
+            (2, 6, 'Blue'),
+            (3, 6, 'Book'),
+        ]:
+            yield checkit, ws, row, column, value
 
     def test_column_data(self):
+        def checkit(ws, row, column, value):
+            assert ws.cell_value(row, column) == value
+
         ws = self.generate_report()
         for data_row, data in enumerate(car_data(None)):
             row = data_row + 4
-            assert ws.cell_value(row, 0) == ''
-            assert ws.cell_value(row, find_sheet_col(ws, 'Year', 2)) == data['year']
-            assert ws.cell_value(row, find_sheet_col(ws, 'Make', 2)) == data['make']
-            assert ws.cell_value(row, find_sheet_col(ws, 'Model', 2)) == data['model']
-            assert ws.cell_value(row, find_sheet_col(ws, 'Style', 2)) == data['style']
-            assert ws.cell_value(row, find_sheet_col(ws, 'Color', 2)) == data['color']
-            assert ws.cell_value(row, find_sheet_col(ws, 'Blue', 2)) == data['book_value']
+            for column, value in [
+                (0, ''),
+                (find_sheet_col(ws, 'Year', 2), data['year']),
+                (find_sheet_col(ws, 'Make', 2), data['make']),
+                (find_sheet_col(ws, 'Model', 2), data['model']),
+                (find_sheet_col(ws, 'Style', 2), data['style']),
+                (find_sheet_col(ws, 'Color', 2), data['color']),
+                (find_sheet_col(ws, 'Blue', 2), data['book_value']),
+            ]:
+                yield checkit, ws, row, column, value
 
     def test_merged_section_heading(self):
         class TestSheet(ReportSheet):
@@ -244,32 +261,53 @@ class TestPortraitOutput(object):
         assert ws.cell_value(0, 0) == 'Dealership'
 
     def test_column_headings(self):
+        def checkit(ws, row, column, value):
+            assert ws.cell_value(row, column) == value
+
         ws = self.generate_report()
-        assert ws.cell_value(3, 0) == ''
-        assert ws.cell_value(3, 1) == 'Count'
-        assert ws.cell_value(3, 2) == 'Income'
-        assert ws.cell_value(3, 3) == 'Expense'
-        assert ws.cell_value(3, 4) == 'Net'
+        for row, column, value in [
+            (3, 0, ''),
+            (3, 1, 'Count'),
+            (3, 2, 'Income'),
+            (3, 3, 'Expense'),
+            (3, 4, 'Net'),
+        ]:
+            yield checkit, ws, row, column, value
 
     def test_row_data(self):
+        def checkit(ws, row, column, value):
+            assert ws.cell_value(row, column) == value
+
         ws = self.generate_report()
         row = find_sheet_row(ws, 'Sales', 0)
-        assert ws.cell_value(row, 1) == 5
-        assert ws.cell_value(row, 2) == 75000
-        assert ws.cell_value(row, 3) == 25000
-        assert ws.cell_value(row, 4) == 50000
+        for column, value in [
+            (1, 5),
+            (2, 75000),
+            (3, 25000),
+            (4, 50000),
+        ]:
+            yield checkit, ws, row, column, value
 
         row = find_sheet_row(ws, 'Rentals', 0)
-        assert ws.cell_value(row, 1) == 46
-        assert ws.cell_value(row, 2) == 8600
-        assert ws.cell_value(row, 3) == 2900
-        assert ws.cell_value(row, 4) == 5700
+        for column, value in [
+            (1, 46),
+            (2, 8600),
+            (3, 2900),
+            (4, 5700),
+        ]:
+            yield checkit, ws, row, column, value
 
         row = find_sheet_row(ws, 'Leases', 0)
-        assert ws.cell_value(row, 1) == 27
-        assert ws.cell_value(row, 2) == 10548
-        assert ws.cell_value(row, 3) == 3680
-        assert ws.cell_value(row, 4) == 6868
+        for column, value in [
+            (1, 27),
+            (2, 10548),
+            (3, 3680),
+            (4, 6868),
+        ]:
+            yield checkit, ws, row, column, value
 
         row = find_sheet_row(ws, 'Totals', 0)
-        assert ws.cell_value(row, 4) == 100000
+        for column, value in [
+            (4, 100000),
+        ]:
+            yield checkit, ws, row, column, value
