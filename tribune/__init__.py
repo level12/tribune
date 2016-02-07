@@ -1,5 +1,5 @@
+import copy
 from decimal import Decimal
-import inspect
 import sys
 
 from blazeutils.spreadsheets import WriterX
@@ -24,7 +24,7 @@ def column_letter(c):
     alphabet = 'abcdefghijklmnopqrstuvwxyz'.upper()
     if c < 26:
         return alphabet[c]
-    return alphabet[(c / 26)-1]+alphabet[c % 26]
+    return alphabet[(c / 26) - 1] + alphabet[c % 26]
 
 
 class ProgrammingError(Exception):
@@ -60,19 +60,8 @@ class SheetUnit(object):
         return col_inst
 
     def new_instance(self, sheet):
-        cls = self.__class__
-        addtl_args = {}
-
-        # try to be smart about which attributes should get copied to the
-        # new instance by looking for attributes on the class that have the
-        # same name as arguments to the classes __init__ method
-        for argname in inspect.getargspec(self.__init__).args:
-            if argname != 'self' and hasattr(self, argname) and argname not in ('key', 'sheet',):
-                addtl_args[argname] = getattr(self, argname)
-
-        # call the unit's init, and pass the addtl args back in
-        unit = cls(key=getattr(self, 'key', None), sheet=sheet, _dont_assign=True, **addtl_args)
-
+        unit = copy.deepcopy(self)
+        unit.sheet = sheet
         return unit
 
     def _assign_to_section(self):
@@ -88,8 +77,6 @@ class SheetColumn(SheetUnit):
     """
     def new_instance(self, sheet):
         column = SheetUnit.new_instance(self, sheet)
-        column.xls_width = self.xls_width
-        column.expr = self.expr
         column._construct_header_data(self._init_header)
 
         return column
@@ -107,7 +94,7 @@ class SheetColumn(SheetUnit):
             key = getattr(col, 'key', getattr(col, 'name', None))
 
         self.key = key
-        self.xls_width = kwargs.get('xls_width')
+        self.xls_width = kwargs.get('xls_width', getattr(self, 'xls_width', None))
         self.xls_computed_width = 0
         self.sheet = sheet
 
@@ -274,21 +261,12 @@ class SheetSection(SheetUnit):
     __cls_units__ = ()
 
     def new_instance(self, sheet):
-        cls = self.__class__
-        section = cls(_dont_assign=True)
+        section = copy.deepcopy(self)
         section.sheet = sheet
         section.units = []
         for unit in self.__cls_units__:
             new_unit = unit.new_instance(section.sheet)
             section.units.append(new_unit)
-
-        # try to be smart about which attributes should get copied to the
-        # new instance by looking for attributes on the class that have the
-        # same name as arguments to the classes __init__ method
-        for argname in inspect.getargspec(self.__init__).args:
-            if argname != 'self' and hasattr(self, argname):
-                setattr(section, argname, getattr(self, argname))
-
         return section
 
     def __init__(self, *args, **kwargs):
@@ -402,8 +380,8 @@ class ReportSheet(SheetSection, WriterX):
 
     def write_simple_merge(self, num_cols, data, style=None):
         # shorthand for WriterX.write_merge, for merge on single row
-        self.ws.merge_range(self.rownum, self.colnum, self.rownum,
-                         self.colnum + num_cols - 1, data, self.conform_style(style))
+        self.ws.merge_range(self.rownum, self.colnum, self.rownum, self.colnum + num_cols - 1, data,
+                            self.conform_style(style))
         self.colnum += num_cols
 
     def write_sheet_header(self):

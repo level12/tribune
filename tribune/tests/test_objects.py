@@ -8,26 +8,30 @@ import pytest
 from xlsxwriter import Workbook
 
 from tribune import SheetColumn, LabeledColumn, ReportSheet, ProgrammingError
-from .reports import CarSheet, CarModelSection, CarDealerSheet
+from .reports import CarSheet, CarDealerSheet
 from .utils import find_sheet_col, find_sheet_row
 
 from tribune_ta.model.entities import Person
 
-car_data = lambda s: [
-    {'year': 1998, 'make': 'Ford', 'model': 'Taurus', 'style': 'SE Wagon',
-     'color': 'silver', 'book_value': 1500},
-    {'year': 2004, 'make': 'Oldsmobile', 'model': 'Alero', 'style': '4D Sedan',
-     'color': 'silver', 'book_value': 4500},
-    {'year': 2003, 'make': 'Ford', 'model': 'F-150', 'style': 'XL Supercab',
-     'color': 'blue', 'book_value': 8500},
-]
 
-dealer_data = lambda s: [
-    {'sale_count': 5, 'sale_income': 75000, 'sale_expense': 25000,
-     'rental_count': 46, 'rental_income': 8600, 'rental_expense': 2900,
-     'lease_count': 27, 'lease_income': 10548, 'lease_expense': 3680,
-     'total_net': 100000},
-]
+def car_data(self):
+    return [
+        {'year': 1998, 'make': 'Ford', 'model': 'Taurus', 'style': 'SE Wagon',
+         'color': 'silver', 'book_value': 1500},
+        {'year': 2004, 'make': 'Oldsmobile', 'model': 'Alero', 'style': '4D Sedan',
+         'color': 'silver', 'book_value': 4500},
+        {'year': 2003, 'make': 'Ford', 'model': 'F-150', 'style': 'XL Supercab',
+         'color': 'blue', 'book_value': 8500},
+    ]
+
+
+def dealer_data(self):
+    return [
+        {'sale_count': 5, 'sale_income': 75000, 'sale_expense': 25000,
+         'rental_count': 46, 'rental_income': 8600, 'rental_expense': 2900,
+         'lease_count': 27, 'lease_income': 10548, 'lease_expense': 3680,
+         'total_net': 100000},
+    ]
 
 
 class TestSheetDecl(object):
@@ -42,9 +46,17 @@ class TestSheetDecl(object):
         section = sheet.units[1]
         assert len(section.units) == 3
 
+    @mock.patch('tribune.tests.reports.CarSheet.fetch_records', car_data)
+    def test_attribute_values_passed_to_instance(self):
+        sheet = CarSheet(Workbook(BytesIO()))
+        car_model_section = sheet.units[1]
+        assert car_model_section.foo == 'bar'
+        car_year_column = car_model_section.units[0]
+        assert car_year_column.xls_width == 15
+
     @mock.patch('tribune.tests.reports.CarSheet.fetch_records')
     def test_filter_args(self, m_fetch):
-        sheet = CarSheet(Workbook(BytesIO()), filter_arg_a='foo', filter_arg_b='bar')
+        CarSheet(Workbook(BytesIO()), filter_arg_a='foo', filter_arg_b='bar')
         m_fetch.assert_called_once_with(arg_a='foo', arg_b='bar')
 
 
@@ -100,8 +112,10 @@ class TestSheetColumn(object):
 
     def test_header_construction(self):
         class TestSheet(ReportSheet):
+            def fetch_records(self):
+                return []
+
             pre_data_rows = 5
-            fetch_records = lambda x: []
             SheetColumn('key', header_2='foo', header_4='bar')
 
         sheet = TestSheet(Workbook(BytesIO()))
@@ -110,8 +124,10 @@ class TestSheetColumn(object):
 
     def test_header_construction_overflows_sheet(self):
         class TestSheet(ReportSheet):
+            def fetch_records(self):
+                return []
+
             pre_data_rows = 3
-            fetch_records = lambda x: []
             SheetColumn('key', header_2='foo', header_4='bar')
 
         with pytest.raises(ProgrammingError) as exc_info:

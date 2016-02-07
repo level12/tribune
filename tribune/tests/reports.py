@@ -2,7 +2,7 @@ import operator
 
 from blazeutils.datastructures import OrderedDict
 
-from tribune import *
+from tribune import *  # noqa
 
 """
     Objects for testing normal landscape-layout reports
@@ -13,12 +13,19 @@ class CarLabeledColumn(LabeledColumn):
     header_start_row = 2
 
 
+class CarYearColumn(CarLabeledColumn):
+    xls_width = 10
+
+
 class CarTotaledColumn(TotaledMixin, CarLabeledColumn):
     pass
 
 
 class CarModelSection(SheetSection):
-    CarLabeledColumn('Year', 'year')
+    def __init__(self, *args, **kwargs):
+        self.foo = kwargs.get('foo')
+
+    CarYearColumn('Year', 'year', xls_width=15)
     CarLabeledColumn('Make', 'make')
     CarLabeledColumn('Model', 'model')
 
@@ -33,7 +40,7 @@ class CarSheet(ReportSheet):
     sheet_name = 'Car Info'
 
     BlankColumn()
-    CarModelSection()
+    CarModelSection(foo='bar')
     CarStyleSection()
     CarTotaledColumn('Blue\nBook', 'book_value')
 
