@@ -1,5 +1,3 @@
-recursive-include webgrid *
-recursive-include webgrid_ta *
+recursive-include tribune_ta *
 global-exclude *.pyc
 include *.rst
-include webgrid_nose.py
