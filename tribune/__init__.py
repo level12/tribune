@@ -13,6 +13,7 @@ __all__ = [
     'SheetSection',
     'BlankColumn',
     'LabeledColumn',
+    'PortraitRow',
     'TotaledMixin',
     'ReportSheet',
     'ReportPortraitSheet',
@@ -81,7 +82,7 @@ class SheetColumn(SheetUnit):
 
         return column
 
-    def __init__(self, key=None, sheet=None, **kwargs):
+    def __init__(self, key=None, sheet=None, render_func=None, **kwargs):
         """
             header_# in kwargs used to override default (blank) heading values
         """
@@ -229,6 +230,49 @@ class LabeledColumn(SheetColumn):
             for i_row, label_string in enumerate(label_rows):
                 kwargs['header_{0}'.format(self.header_start_row + i_row)] = label_string
         SheetColumn.__init__(self, key=key, **kwargs)
+
+
+class PortraitRow(SheetUnit):
+    """A row object for a portrait sheet with multiple columns
+    The arguments here match the columns created in the ReportPortraitSheet instance's
+    `init_columns`. Since this report is in
+    Portrait mode this is necessary to display the report properly.
+    In the end the report will look like this:
+    +--------------+---------+
+    | column_1     | val_1   | <- Not rendered, it's just here for a visual aid.
+    +--------------+---------+
+    | Foo          | Bar     | PortraitRow('Foo', Model.foo)
+    +--------------+---------+
+    | Baz          | 0.1145  | PortraitRow('Baz', Model.display_value)
+    +--------------+---------+
+    | ...          | ...     | Other fields...
+    +--------------+---------+
+    """
+
+    def __init__(self, sheet=None, render_func=None, **kwargs):
+        """Instantiation of the row
+        NOTE: Render func is used for overriding rendering functionality
+            * Instead of baking in a default render and then having to subclass this object you can
+            pass in `render_func` which takes a single argument, the PortraitRow instance. Call
+            `write_data()` on the columns as you see fit. If you return True or None `render` will
+            move to the next row, return `False` to force tribune to stay on the same row.
+            def render_func(row):
+                row.sheet.columns['label'].write_data(row.label, FORMAT_DICTIONARY)
+                row.sheet.columns['value'].write_data(row.value, FORMAT_DICTIONARY)
+        """
+        self.sheet = sheet
+        self.render = render_func or self.render
+        self.column_format = {
+            'label': {},
+            'value': {},
+        }
+
+    def render(self):
+        raise NotImplementedError
+
+    def update_format(self, label={}, value={}):
+        self.column_format['label'].update(label)
+        self.column_format['value'].update(value)
 
 
 class TotaledMixin(object):

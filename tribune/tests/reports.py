@@ -57,16 +57,16 @@ class CarSheet(ReportSheet):
 """
 
 
-class DealershipReportRow(SheetUnit):
+class DealershipReportRow(PortraitRow):
     def __init__(self, label=None, comp=None, inc=None, exp=None, net=None,
-                 sheet=None, comp_curr=False, **kwargs):
+                 comp_curr=False, **kwargs):
+        super(DealershipReportRow, self).__init__()
         self.label = label
         self.comp = comp
         self.comp_curr = comp_curr
         self.inc = inc
         self.exp = exp
         self.net = net
-        self.sheet = sheet
 
         if self.net is None and (self.inc or self.exp):
             self.net = (self.inc, self.exp, operator.sub)
