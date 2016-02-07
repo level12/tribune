@@ -28,6 +28,30 @@ def column_letter(c):
     return alphabet[(c / 26) - 1] + alphabet[c % 26]
 
 
+def _fetch_val(record, key):
+        if key is None:
+            return ''
+        elif isinstance(key, str) and hasattr(record, key):
+            return getattr(record, key)
+        elif isinstance(key, str) and (isinstance(record, dict) and key in record):
+            return record[key]
+        elif isinstance(key, tuple):
+            # magic way to combine data fields in a cell. tuple is expected as
+            #   (SA-col-1/string/int, SA-col-2/string/int, operator)
+            val = key[2](
+                _fetch_val(record, key[0]),
+                _fetch_val(record, key[1])
+            )
+        elif not isinstance(key, (str, int, float, Decimal)):
+            # must be a SA-col, find the key and hit the record
+            datakey = getattr(key, 'key', getattr(key, 'name', None))
+            val = getattr(record, datakey)
+        else:
+            # if none of the above, put the key in the cell
+            val = key
+        return val
+
+
 class ProgrammingError(Exception):
     pass
 
@@ -82,9 +106,11 @@ class SheetColumn(SheetUnit):
 
         return column
 
-    def __init__(self, key=None, sheet=None, render_func=None, **kwargs):
+    def __init__(self, key=None, sheet=None, write_header_func=None, write_data_func=None,
+                 write_total_func=None, **kwargs):
         """
             header_# in kwargs used to override default (blank) heading values
+            write_*_func can override the class methods
         """
         # key can be one of many types: str, Decimal, int, float, SA column,
         #   or a tuple of the above (with an operator)
@@ -98,6 +124,9 @@ class SheetColumn(SheetUnit):
         self.xls_width = kwargs.get('xls_width', getattr(self, 'xls_width', None))
         self.xls_computed_width = 0
         self.sheet = sheet
+        self.write_header = write_header_func or self.write_header
+        self.write_data = write_data_func or self.write_data
+        self.write_total = write_total_func or self.write_total
 
         # look for header values in kwargs, construct a header dict
         self._init_header = dict()
@@ -147,27 +176,8 @@ class SheetColumn(SheetUnit):
             self.sheet.ws.set_column(self.col_idx, self.col_idx, int(final_width + 3))
 
     def fetch_val(self, record, key):
-        if key is None:
-            return ''
-        elif isinstance(key, str) and hasattr(record, key):
-            return getattr(record, key)
-        elif isinstance(key, str) and (isinstance(record, dict) and key in record):
-            return record[key]
-        elif isinstance(key, tuple):
-            # magic way to combine data fields in a cell. tuple is expected as
-            #   (SA-col-1/string/int, SA-col-2/string/int, operator)
-            val = key[2](
-                self.fetch_val(record, key[0]),
-                self.fetch_val(record, key[1])
-            )
-        elif not isinstance(key, (str, int, float, Decimal)):
-            # must be a SA-col, find the key and hit the record
-            datakey = getattr(key, 'key', getattr(key, 'name', None))
-            val = getattr(record, datakey)
-        else:
-            # if none of the above, put the key in the cell
-            val = key
-        return val
+        # wrapper for _fetch_val to make an instance override easier
+        return _fetch_val(record, key)
 
     def extract_data(self, record):
         return self.fetch_val(record, self.key)
@@ -420,9 +430,22 @@ class ReportSheet(WriterX, SheetSection):
         self.ws.freeze_panes(row, col)
 
     def write_simple_merge(self, num_cols, data, style=None):
-        # shorthand for WriterX.write_merge, for merge on single row
-        self.ws.merge_range(self.rownum, self.colnum, self.rownum, self.colnum + num_cols - 1, data,
-                            self.conform_style(style))
+        """shorthand for WriterX.write_merge, for merge on single row
+            data: can be a literal value, or a tuple of (record, key) which will do the fetch_val
+        """
+        data_to_write = data
+        if isinstance(data, tuple):
+            # extract here to raise an exception if the tuple doesn't have the right number of vals
+            record, key = data
+            data_to_write = _fetch_val(record, key)
+        if num_cols == 0:
+            raise Exception('Cannot write data length 0')
+        if num_cols > 1:
+            self.ws.merge_range(self.rownum, self.colnum, self.rownum, self.colnum + num_cols - 1,
+                                data_to_write, self.conform_style(style))
+        else:
+            # number of cells is one, so no merge needed
+            self.write(self.rownum, self.colnum, data_to_write, self.conform_style(style))
         self.colnum += num_cols
 
     def write_sheet_header(self):
@@ -446,9 +469,16 @@ class ReportSheet(WriterX, SheetSection):
         return style
 
     def write(self, row, col, data, style=None):
-        # wraps WriterX.write, checks row,col tuple against guarded cells
+        """wraps WriterX.write, checks row,col tuple against guarded cells
+            data: can be a literal value, or a tuple of (record, key) which will do the fetch_val
+        """
+        data_to_write = data
+        if isinstance(data, tuple):
+            # extract here to raise an exception if the tuple doesn't have the right number of vals
+            record, key = data
+            data_to_write = _fetch_val(record, key)
         if (row, col) not in self.locked_cells:
-            self.ws.write(row, col, data, self.conform_style(style))
+            self.ws.write(row, col, data_to_write, self.conform_style(style))
 
     def awrite(self, data, style=None, nextrow=False):
         super(ReportSheet, self).awrite(data, style=self.conform_style(style), nextrow=nextrow)

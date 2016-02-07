@@ -7,7 +7,7 @@ import mock
 import pytest
 from xlsxwriter import Workbook
 
-from tribune import SheetColumn, LabeledColumn, ReportSheet, ProgrammingError
+from tribune import SheetColumn, LabeledColumn, ReportSheet, ProgrammingError, SheetSection
 from .reports import CarSheet, CarDealerSheet
 from .utils import find_sheet_col, find_sheet_row
 
@@ -156,10 +156,10 @@ class TestLabeledColumn(object):
 
 class TestOutput(object):
     @mock.patch('tribune.tests.reports.CarSheet.fetch_records', car_data)
-    def generate_report(self):
+    def generate_report(self, reportcls=CarSheet):
         wb = Workbook(BytesIO())
-        ws = wb.add_worksheet(CarSheet.sheet_name)
-        CarSheet(wb, worksheet=ws)
+        ws = wb.add_worksheet(reportcls.sheet_name)
+        reportcls(wb, worksheet=ws)
         book = xlsx_to_reader(wb)
         return book.sheet_by_name('Car Info')
 
@@ -189,6 +189,45 @@ class TestOutput(object):
             assert ws.cell_value(row, find_sheet_col(ws, 'Style', 2)) == data['style']
             assert ws.cell_value(row, find_sheet_col(ws, 'Color', 2)) == data['color']
             assert ws.cell_value(row, find_sheet_col(ws, 'Blue', 2)) == data['book_value']
+
+    def test_merged_section_heading(self):
+        class TestSheet(ReportSheet):
+            class CarMergedHeaderSection(SheetSection):
+                LabeledColumn('Style', 'style')
+                LabeledColumn('Color', 'color')
+
+                def write_header(self):
+                    record_dict = {'foo': 'bar', 'baz': 'data'}
+                    self.sheet.write_simple_merge(2, (record_dict, 'baz'))
+
+            pre_data_rows = 1
+            sheet_name = 'Car Info'
+            CarMergedHeaderSection()
+
+            def fetch_records(self):
+                return []
+
+        ws = self.generate_report(reportcls=TestSheet)
+        assert ws.cell_value(0, 0) == 'data'
+
+    def test_merged_section_heading_single_length(self):
+        class TestSheet(ReportSheet):
+            class CarMergedHeaderSection(SheetSection):
+                LabeledColumn('Style', 'style')
+
+                def write_header(self):
+                    record_dict = {'foo': 'bar', 'baz': 'data'}
+                    self.sheet.write_simple_merge(1, (record_dict, 'baz'))
+
+            pre_data_rows = 1
+            sheet_name = 'Car Info'
+            CarMergedHeaderSection()
+
+            def fetch_records(self):
+                return []
+
+        ws = self.generate_report(reportcls=TestSheet)
+        assert ws.cell_value(0, 0) == 'data'
 
 
 class TestPortraitOutput(object):
