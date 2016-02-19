@@ -4,6 +4,8 @@
 #       within, and starting/ending indices
 #   returns -1 if the value is not found
 
+from tribune.sheet_import import SpreadsheetImportError
+
 
 def find_sheet_row(sheet, needle, column, start=0, end=100):
     try:
@@ -23,3 +25,11 @@ def find_sheet_col(sheet, needle, row, start=0, end=100):
     except IndexError:
         pass
     return -1
+
+
+def assert_import_errors(errors, func):
+    try:
+        func()
+        assert False, 'Did not raise SpreadsheetImportError'
+    except SpreadsheetImportError as e:
+        assert set(e.errors) == set(errors)
