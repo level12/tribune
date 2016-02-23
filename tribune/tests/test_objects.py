@@ -8,10 +8,9 @@ import pytest
 from xlsxwriter import Workbook
 
 from tribune import SheetColumn, LabeledColumn, ReportSheet, ProgrammingError, SheetSection
+from .entities import Person
 from .reports import CarSheet, CarDealerSheet
 from .utils import find_sheet_col, find_sheet_row
-
-from tribune_ta.model.entities import Person
 
 
 def car_data(self):

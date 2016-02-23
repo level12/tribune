@@ -1,3 +1,2 @@
-recursive-include tribune_ta *
 global-exclude *.pyc
 include *.rst

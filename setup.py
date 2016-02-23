@@ -8,13 +8,13 @@ except ImportError:
 
 # pip install -e .[develop]
 develop_requires = [
+    'BlazeUtils',
     'SQLAlchemy',
+    'XlsxWriter',
     'mock',
     'pytest',
-    'Flask',
-    'Flask-Bootstrap',
-    'Flask-SQLAlchemy',
-    'Flask-WebTest',
+    'pytest-cov',
+    'six',
     'wrapt',
     'xlrd',
 ]
@@ -31,7 +31,7 @@ setup(
     long_description='\n\n'.join((README, CHANGELOG)),
     author="Matt Lewellyn",
     author_email="matt.lewellyn@level12.io",
-    url='https://bitbucket.org/level12/tribune',
+    url='https://github.com/level12/tribune',
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
@@ -49,8 +49,4 @@ setup(
         'six',
         'xlsxwriter',
     ],
-    entry_points="""
-        [console_scripts]
-        tribune_ta = tribune_ta.manage:script_entry
-    """,
 )
