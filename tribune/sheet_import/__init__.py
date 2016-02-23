@@ -2,8 +2,10 @@
 
 Example:
 
-    from tribune.sheet_import import *
-    from tribune.sheet_import.parsers import *
+    from tribune.sheet_import import Field, NestedItersSheetData, SheetImporter
+    from tribune.sheet_import.parsers import (
+        chain, parse_int, parse_text, parse_yes_no, validate_min
+    )
 
     class MySheet(SheetImporter):
         fields = (

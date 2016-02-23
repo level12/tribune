@@ -2,7 +2,16 @@ import operator
 
 from blazeutils.datastructures import OrderedDict
 
-from tribune import *  # noqa
+from tribune import (
+    BlankColumn,
+    LabeledColumn,
+    PortraitRow,
+    ReportPortraitSheet,
+    ReportSheet,
+    SheetPortraitColumn,
+    SheetSection,
+    TotaledMixin,
+)
 
 """
     Objects for testing normal landscape-layout reports
