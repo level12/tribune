@@ -1,23 +1,13 @@
 from six import text_type
 
 from ..utils import (
-    compose,
+    chain,
     raises,
 )
 from . import (
     SpreadsheetImportError,
     normalize_text,
 )
-
-
-def chain(*functions):
-    """Returns a new function based on a series of given functions by chaining them together via
-    function composition. This is exactly equal to function composition, but represents the chaining
-    from left to right instead of from right to left.
-
-    Use this to combine parsers and validators.
-    """
-    return compose(*reversed(functions))
 
 
 def parse_text(value):

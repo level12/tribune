@@ -1,5 +1,5 @@
 from itertools import (
-    chain,
+    chain as _itertools_chain,
     count,
     islice,
     takewhile,
@@ -26,6 +26,16 @@ def compose(*functions):
     return reduce(lambda f, g: lambda x: f(g(x)), functions, lambda x: x)
 
 
+def chain(*functions):
+    """Returns a new function based on a series of given functions by chaining them together via
+    function composition. This is exactly equal to function composition, but represents the chaining
+    from left to right instead of from right to left.
+
+    Use this to combine parsers and validators.
+    """
+    return compose(*reversed(functions))
+
+
 def unzip(iterable):
     """Unzips/transposes an iterable of tuples into a tuple of lists.
 
@@ -42,7 +52,7 @@ def unzip(iterable):
 def flatten(iterable):
     """Takes an iterable of iterables and flattens it by one layer (e.g. [[1],[2]] becomes [1,2]).
     """
-    return list(chain(*iterable))
+    return list(_itertools_chain(*iterable))
 
 
 def split_every(n, iterable):
