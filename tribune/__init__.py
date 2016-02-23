@@ -6,6 +6,9 @@ from blazeutils.spreadsheets import WriterX
 import six
 from xlsxwriter.format import Format
 
+from .utils import column_letter
+
+
 __all__ = [
     'SheetUnit',
     'SheetColumn',
@@ -20,36 +23,28 @@ __all__ = [
 ]
 
 
-def column_letter(c):
-    # c is the zero-based column index
-    alphabet = 'abcdefghijklmnopqrstuvwxyz'.upper()
-    if c < 26:
-        return alphabet[c]
-    return alphabet[(c / 26) - 1] + alphabet[c % 26]
-
-
 def _fetch_val(record, key):
-        if key is None:
-            return ''
-        elif isinstance(key, str) and hasattr(record, key):
-            return getattr(record, key)
-        elif isinstance(key, str) and (isinstance(record, dict) and key in record):
-            return record[key]
-        elif isinstance(key, tuple):
-            # magic way to combine data fields in a cell. tuple is expected as
-            #   (SA-col-1/string/int, SA-col-2/string/int, operator)
-            val = key[2](
-                _fetch_val(record, key[0]),
-                _fetch_val(record, key[1])
-            )
-        elif not isinstance(key, (str, int, float, Decimal)):
-            # must be a SA-col, find the key and hit the record
-            datakey = getattr(key, 'key', getattr(key, 'name', None))
-            val = getattr(record, datakey)
-        else:
-            # if none of the above, put the key in the cell
-            val = key
-        return val
+    if key is None:
+        return ''
+    elif isinstance(key, str) and hasattr(record, key):
+        return getattr(record, key)
+    elif isinstance(key, str) and (isinstance(record, dict) and key in record):
+        return record[key]
+    elif isinstance(key, tuple):
+        # magic way to combine data fields in a cell. tuple is expected as
+        #   (SA-col-1/string/int, SA-col-2/string/int, operator)
+        val = key[2](
+            _fetch_val(record, key[0]),
+            _fetch_val(record, key[1])
+        )
+    elif not isinstance(key, (str, int, float, Decimal)):
+        # must be a SA-col, find the key and hit the record
+        datakey = getattr(key, 'key', getattr(key, 'name', None))
+        val = getattr(record, datakey)
+    else:
+        # if none of the above, put the key in the cell
+        val = key
+    return val
 
 
 class ProgrammingError(Exception):
