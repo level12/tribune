@@ -132,7 +132,7 @@ class TestSheetImport(object):
             lambda: parse_records([['Name'], [''], ['data']])
         )
 
-    def test_sheet_import_as_reprot_sheet(self):
+    def test_sheet_import_as_report_sheet(self):
         class TestImport(si.SheetImporter):
             fields = (
                 si.Field('Name', 'name', p.chain(p.parse_text, p.validate_not_empty)),
