@@ -167,9 +167,19 @@ Field = namedtuple('Field', ['label', 'field', 'parser'])
 
 
 class SheetImporter(object):
-    """A base class for defining how to import a single spreadsheet into an ORM model."""
+    """A base class for defining how to parse a single spreadsheet."""
     data_start_row = 1  # 0-based index where first row of data begins
-    fields = tuple()    # Ordered iterable of Field tuples
+    fields = ()         # Ordered iterable of Field tuples
+
+    def __init__(self, fields=None, data_start_row=None):
+        """
+        :param fields: is an ordered iterable of Field tuples. If not provided, the class-level
+                       value will be used.
+        :param data_start_row: is the 0-based index where the first row of data begins. If not
+                               provided, the class-level value will be used.
+        """
+        self.fields = fields or self.fields
+        self.data_start_row = data_start_row or self.data_start_row
 
     def _get_header_errors(self, sheet):
         """Builds a list of errors regarding the sheet header. The list will be empty if there are
@@ -248,13 +258,12 @@ class SheetImporter(object):
         """Like `get_sheet_records` but returns a generator that splits the result into batches."""
         return split_every(batch_size, self.get_sheet_records(sheet))
 
-    @classmethod
-    def as_report_sheet(cls):
+    def as_report_sheet(self):
         """Returns a ReportSheet class which mirrors this SheetImporter."""
         class NewReportSheet(tribune.ReportSheet):
-            pre_data_rows = cls.data_start_row
+            pre_data_rows = self.data_start_row
 
-            for ___field in cls.fields:  # This iteration variable gets left behind on the class!
+            for ___field in self.fields:  # This iteration variable gets left behind on the class!
                 tribune.LabeledColumn(___field.label)
 
             def fetch_records(self):
