@@ -15,27 +15,24 @@ def test_normalize_text():
     assert p.normalize_text(' A B ') == 'a b'
 
 
-def parse_records_with(import_cls):
+def parse_records_with(importer):
     return lambda data: list(
-        import_cls().get_sheet_records(si.XlrdSheetData.from_nested_iters(data)))
+        importer.get_sheet_records(
+            si.XlrdSheetData.from_nested_iters(data)))
 
 
 class TestSheetImport(object):
     def test_sheet_import_no_fields(self):
-        class TestImport(si.SheetImporter):
-            fields = ()
-
-        parse_records = parse_records_with(TestImport)
+        parse_records = parse_records_with(si.SheetImporter([]))
 
         assert parse_records([]) == []
         assert parse_records([[]]) == []
         assert parse_records([['data']]) == []
 
     def test_sheet_import_simple(self):
-        class TestImport(si.SheetImporter):
-            fields = (si.Field('Name', 'name', p.parse_text),)
-
-        parse_records = parse_records_with(TestImport)
+        parse_records = parse_records_with(si.SheetImporter([
+            si.Field('Name', 'name', p.parse_text),
+        ]))
 
         assert parse_records([['Name']]) == []  # no data
         assert parse_records([['name']]) == []  # different header format
@@ -55,13 +52,10 @@ class TestSheetImport(object):
                                  lambda: parse_records(case))
 
     def test_sheet_import_data_validation(self):
-        class TestImport(si.SheetImporter):
-            fields = (
-                si.Field('Name', 'name', p.chain(p.parse_text, p.validate_not_empty)),
-                si.Field('Age',  'age',  p.parse_int),
-            )
-
-        parse_records = parse_records_with(TestImport)
+        parse_records = parse_records_with(si.SheetImporter([
+            si.Field('Name', 'name', p.chain(p.parse_text, p.validate_not_empty)),
+            si.Field('Age',  'age',  p.parse_int),
+        ]))
 
         assert parse_records([['Name', 'Age']]) == []
         assert parse_records([['Name', 'Age'], ['Ed', '27']]) == [{'name': 'Ed', 'age': 27}]
@@ -110,7 +104,7 @@ class TestSheetImport(object):
                 record['age'] = 27
                 return record
 
-        parse_records = parse_records_with(TestImport)
+        parse_records = parse_records_with(TestImport())
 
         assert parse_records([['Name']]) == []
         assert parse_records([['Name'], ['Ed']]) == []  # Ed is filtered out
@@ -132,13 +126,30 @@ class TestSheetImport(object):
             lambda: parse_records([['Name'], [''], ['data']])
         )
 
-    def test_sheet_import_as_report_sheet(self):
-        class TestImport(si.SheetImporter):
-            fields = (
-                si.Field('Name', 'name', p.chain(p.parse_text, p.validate_not_empty)),
-                si.Field('Job',  'job',  p.parse_text),
-            )
+    def test_sheet_import_data_start_row(self):
+        parse_records = parse_records_with(si.SheetImporter([
+            si.Field('Is Cool', 'is_cool', p.parse_yes_no)
+        ], data_start_row=3))
 
-        TestReportSheet = TestImport.as_report_sheet()
-        assert TestReportSheet.pre_data_rows == TestImport.data_start_row
+        parse_records([
+            [''],
+            [''],
+            ['Is Cool'],
+            ['yes'],
+            ['no'],
+        ]) == [{'is_cool': True}, {'is_cool': False}]
+
+        assert_import_errors(
+            {'Expected "Is Cool" in header cell A3.'},
+            lambda: parse_records([['Is Cool']])
+        )
+
+    def test_sheet_import_as_report_sheet(self):
+        importer = si.SheetImporter((
+            si.Field('Name', 'name', p.chain(p.parse_text, p.validate_not_empty)),
+            si.Field('Job',  'job',  p.parse_text),
+        ))
+
+        TestReportSheet = importer.as_report_sheet()
+        assert TestReportSheet.pre_data_rows == importer.data_start_row
         # TODO More tests here.
