@@ -1,4 +1,8 @@
 from six import text_type
+from six.moves import (
+    filter,
+    map,
+)
 
 from ..utils import (
     chain,
@@ -8,6 +12,16 @@ from . import (
     SpreadsheetImportError,
     normalize_text,
 )
+
+
+def map_(func):
+    """A strict (non-iterator), curried version of map for convenience in parser chains."""
+    return lambda values: list(map(func, values))
+
+
+def filter_(func):
+    """A strict (non-iterator), curried version of filter for convenience in parser chains."""
+    return lambda values: list(filter(func, values))
 
 
 def parse_text(value):
@@ -65,6 +79,12 @@ def default_to(default):
     return lambda value: default if value is None or text_type(value).strip() == '' else value
 
 
+def nullable(parser):
+    """Returns a parser that wraps another parser and only applies it if the value is not empty.
+    If the value is empty, this parser always converts it to `None`."""
+    return lambda value: None if default_to(None)(value) is None else parser(value)
+
+
 def validate_satisfies(pred, error_message):
     """Validates that a value satisfies the given predicate or issues the given error if it
     doesn't."""
@@ -98,3 +118,36 @@ def validate_max(max_):
 def validate_range(min_, max_):
     """Validates that a number is between a minimum and a maximum."""
     return chain(validate_max(max_), validate_min(min_))
+
+
+def parse_list(parser=lambda x: x, delim=' '):
+    """Returns a parser that splits its input text by the given delimiter and runs the given parser
+    on each element of the result.
+
+    :param parser: is a parser to map onto each element in the parsed list. By default it is the
+                   identity function.
+    :param delim: is the delimiter to use for splitting the input into a list.
+    """
+    return chain(parse_text, lambda value: value.split(delim), map_(parser))
+
+
+# Keeps only non-empty values in a list
+filter_non_empty = chain(map_(default_to(None)), filter_(lambda x: x is not None))
+
+
+def parse_lookup(mapping, thing='thing'):
+    """Parses a value by looking it up in a mapping (usually a dictionary). If the value is missing,
+    this raises a SpreadsheetImportError. If you want to supply a default instead, then provide a
+    `collections.defaultdict` object as the mapping.
+
+    :param mapping: is a mapping from raw value to desired value. It only needs to behave like a
+                    `dict`.
+    :param thing: is the name of the resulting type for error messages.
+    """
+    def parser(value):
+        try:
+            return mapping[value]
+        except KeyError:
+            raise SpreadsheetImportError([u'"{}" is not a valid {}'.format(value, thing)])
+
+    return parser

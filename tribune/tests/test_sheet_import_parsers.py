@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 import tribune.sheet_import.parsers as p
 from .utils import assert_import_errors
 
@@ -81,6 +83,15 @@ def test_default_to():
     assert p.default_to(1)(None) == 1
 
 
+def test_nullable():
+    assert p.nullable(lambda _: 10)('') is None
+    assert p.nullable(lambda _: 10)(None) is None
+    assert p.nullable(lambda _: 10)('  ') is None
+    assert p.nullable(lambda _: 10)('a') == 10
+    assert p.nullable(lambda _: 10)(False) == 10
+    assert p.nullable(lambda _: 10)(0) == 10
+
+
 def test_validate_satisfies():
     def always(_):
         return True
@@ -156,3 +167,33 @@ def test_validate_range():
                          lambda: p.validate_range(-30, 30)(31))
     assert_import_errors({'number must be no less than -30'},
                          lambda: p.validate_range(-30, 30)(-31))
+
+
+def test_parse_list():
+    assert p.parse_list(delim=' ')('') == [u'']
+    assert p.parse_list(delim=' ')('a') == [u'a']
+    assert p.parse_list(delim=' ')('  a   ') == [u'a']
+    assert p.parse_list(delim=',')('  a   ') == [u'a']
+    assert p.parse_list(delim=' ')('a b') == [u'a', u'b']
+    assert p.parse_list(delim=',')('a b') == [u'a b']
+    assert p.parse_list(delim=',')('a, b, c') == [u'a', u' b', u' c']
+    assert p.parse_list(p.parse_text, delim=',')('a, b, c') == [u'a', u'b', u'c']
+    assert p.parse_list(lambda x: x.upper(), delim=',')('a,b,c') == [u'A', u'B', u'C']
+
+
+def test_parse_lookup():
+    assert p.parse_lookup({'a': 1})('a') == 1
+    assert p.parse_lookup({'a': 1, 'b': 2})('b') == 2
+    assert p.parse_lookup(defaultdict(lambda: None, {'a': 1}))('a') == 1
+    assert p.parse_lookup(defaultdict(lambda: None, {'a': 1}))('b') is None
+
+
+def test_filter_non_empty():
+    assert p.filter_non_empty([]) == []
+    assert p.filter_non_empty([1]) == [1]
+    assert p.filter_non_empty([0, 1]) == [0, 1]
+    assert p.filter_non_empty([False, True]) == [False, True]
+    assert p.filter_non_empty([None]) == []
+    assert p.filter_non_empty(['']) == []
+    assert p.filter_non_empty(['', 1, None]) == [1]
+    assert p.filter_non_empty((1, '', None, 2)) == [1, 2]
