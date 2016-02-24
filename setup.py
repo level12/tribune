@@ -40,7 +40,10 @@ setup(
         'Programming Language :: Python :: 2.7',
     ],
     license='BSD',
-    packages=['tribune'],
+    packages=[
+        'tribune',
+        'tribune.sheet_import',
+    ],
     extras_require={'develop': develop_requires},
     zip_safe=False,
     include_package_data=True,
