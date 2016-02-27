@@ -1,12 +1,20 @@
 import copy
 from decimal import Decimal
 import sys
+from types import FunctionType
 
 from blazeutils.spreadsheets import WriterX
 import six
 from xlsxwriter.format import Format
 
 from .utils import column_letter
+
+# we do not want to make SA a dependency, just want to work with it when it is used
+try:
+    from sqlalchemy.orm.attributes import QueryableAttribute
+except ImportError:
+    class QueryableAttribute(object):
+        pass
 
 
 __all__ = [
@@ -88,6 +96,23 @@ class SheetUnit(object):
         section_locals = sys._getframe(2).f_locals
         section_cls_units = section_locals.setdefault('__cls_units__', [])
         section_cls_units.append(self)
+
+    def __deepcopy__(self, memo):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        # setting the id prevents self-references from deep copying
+        memo[id(self)] = result
+        for k, v in self.__dict__.items():
+            # SQLAlchemy attributes need special care for copying, don't deep copy these
+            # Functions (FunctionType) also get the original object passed, as the copy lib does
+            #   the same. This handling will avoid problems with decorated functions
+            if isinstance(v, (QueryableAttribute, FunctionType)):
+                setattr(result, k, v)
+                continue
+
+            # fall back to default copy operation
+            setattr(result, k, copy.deepcopy(v, memo))
+        return result
 
 
 class SheetColumn(SheetUnit):
