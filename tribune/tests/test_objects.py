@@ -6,8 +6,17 @@ from blazeutils.spreadsheets import xlsx_to_reader
 import mock
 import pytest
 from xlsxwriter import Workbook
+import wrapt
 
-from tribune import SheetColumn, LabeledColumn, ReportSheet, ProgrammingError, SheetSection
+from tribune import (
+    LabeledColumn,
+    PortraitRow,
+    ProgrammingError,
+    ReportSheet,
+    SheetColumn,
+    SheetSection,
+    SheetUnit,
+)
 from .entities import Person
 from .reports import CarSheet, CarDealerSheet
 from .utils import find_sheet_col, find_sheet_row
@@ -62,6 +71,52 @@ class TestSheetDecl(object):
     def test_filter_args(self, m_fetch):
         CarSheet(Workbook(BytesIO()), filter_arg_a='foo', filter_arg_b='bar')
         m_fetch.assert_called_once_with(arg_a='foo', arg_b='bar')
+
+    def test_deep_copy_sqlalchemy(self):
+        """SQLALchemy objects like InstrumentedAttribute do not like deep copies. In the cases used
+        by tribune, anything inheriting QueryableAttribute is treated differently, simply assigning
+        the value over on the copy (instead of copying and then copying all underlying objects)."""
+        base_row = PortraitRow('foo', Person.firstname)
+        base_row.new_instance(None)
+
+    def test_deep_copy_unbound_method(self):
+        """This test is kind of hard to set up, so it needs some explanation. A great deal of
+        function objects are fine with the deep copy, but this particular case is not. What we
+        have is an unbound method (status_render) wrapped in a decorator."""
+        def status_render(row):
+            pass
+
+        @wrapt.decorator
+        def some_decorator(wrapped, instance, args, kwargs):
+            row, = args
+            return wrapped(row)
+
+        class DummyUnit(SheetUnit):
+            def __init__(self):
+                self.foo = some_decorator(status_render)
+
+        base_unit = DummyUnit()
+        base_unit.new_instance(None)
+
+    def test_deep_copy_static_method(self):
+        """This test is kind of hard to set up, so it needs some explanation. A great deal of
+        function objects are fine with the deep copy, but this particular case is not. What we
+        have is an static method (status_render) wrapped in a decorator."""
+        @wrapt.decorator
+        def some_decorator(wrapped, instance, args, kwargs):
+            row, = args
+            return wrapped(row)
+
+        class DummyUnit(SheetUnit):
+            @staticmethod
+            def status_render(row):
+                pass
+
+            def __init__(self):
+                self.foo = some_decorator(self.status_render)
+
+        base_unit = DummyUnit()
+        base_unit.new_instance(None)
 
 
 class TestSheetColumn(object):
