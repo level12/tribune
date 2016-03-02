@@ -1,5 +1,6 @@
 from collections import defaultdict
 
+import pytest
 import tribune.sheet_import.parsers as p
 from .utils import assert_import_errors
 
@@ -167,6 +168,43 @@ def test_validate_range():
                          lambda: p.validate_range(-30, 30)(31))
     assert_import_errors({'number must be no less than -30'},
                          lambda: p.validate_range(-30, 30)(-31))
+
+
+def test_validate_unique():
+    assert p.validate_unique({})(1) == 1
+    assert p.validate_unique({})('abc') == 'abc'
+    assert p.validate_unique({})(' abc ') == ' abc '
+    assert p.validate_unique({1})(2) == 2
+    assert p.validate_unique({2})(1) == 1
+    assert p.validate_unique({1, 2})(3) == 3
+    assert p.validate_unique(set(range(100)))(101) == 101
+
+    fail_cases = [({1}, 1), ({1, 2}, 2), (set(range(100)), 99)]
+
+    for others, value in fail_cases:
+        with pytest.raises(p.SpreadsheetImportError):
+            p.validate_unique(others)(value)
+
+
+def test_validate_one_of():
+    assert p.validate_one_of({1})(1) == 1
+    assert p.validate_one_of({2})(2) == 2
+    assert p.validate_one_of({1, 2})(1) == 1
+    assert p.validate_one_of({1, 2})(2) == 2
+
+    fail_cases = [({1}, 2), ({1, 2}, 3), (set(range(100)), 101)]
+
+    for others, value in fail_cases:
+        with pytest.raises(p.SpreadsheetImportError):
+            p.validate_one_of(others)(value)
+
+    assert_import_errors({u'must be a valid thing'}, lambda: p.validate_one_of({1})(2))
+    assert_import_errors({u'must be a valid chicken'},
+                         lambda: p.validate_one_of({1}, thing='chicken')(2))
+    assert_import_errors(
+        {u'must be a valid chicken: 1, 2, 3'},
+        lambda: p.validate_one_of([1, 2, 3], thing='chicken', show_choices_in_error=True)(4)
+    )
 
 
 def test_parse_list():
