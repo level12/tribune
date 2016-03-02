@@ -120,6 +120,38 @@ def validate_range(min_, max_):
     return chain(validate_max(max_), validate_min(min_))
 
 
+def validate_unique(others, thing='thing'):
+    """Validates that a value is not a member of the given set.
+
+    :param others: is the other things which already exist.
+    :param thing: is the name of the "thing" which may or may not be taken.
+    """
+    others_set = frozenset(others)
+
+    def parser(value):
+        if value in others_set:
+            raise SpreadsheetImportError([
+                u'{thing} "{value}" already exists'.format(thing=thing, value=value)])
+        return value
+    return parser
+
+
+def validate_one_of(choices, thing='thing', show_choices_in_error=False):
+    """Validates that a value is a member of the given set of choices.
+
+    :param choices: is the set of possible choices.
+    :param thing: is the name of the "things" that make up the possible choices.
+    :param show_choices_in_error: determines if all the choices should be rendered in the error
+                                  message.
+    """
+    error_message = u'must be a valid {thing}{choices}'.format(
+        thing=thing,
+        choices=': ' + ', '.join(map(str, choices)) if show_choices_in_error else ''
+    )
+    choices_set = frozenset(choices)
+    return validate_satisfies(lambda v: v in choices_set, error_message)
+
+
 def parse_list(parser=lambda x: x, delim=' '):
     """Returns a parser that splits its input text by the given delimiter and runs the given parser
     on each element of the result.
