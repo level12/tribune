@@ -27,7 +27,7 @@ from collections import namedtuple
 from io import BytesIO
 
 from blazeutils.spreadsheets import xlsx_to_reader
-from six import with_metaclass
+from six import with_metaclass, text_type
 from six.moves import filter
 import xlrd
 from xlsxwriter import Workbook
@@ -70,7 +70,7 @@ def workbook_safe_open(file_handle):
 
 def normalize_text(x):
     """Normalizes a string by stripping whitespace and flattening case."""
-    return x.strip().lower()
+    return text_type(x).strip().lower()
 
 
 class Cell(object):
