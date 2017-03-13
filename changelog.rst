@@ -1,6 +1,10 @@
 Changelog
 =========
 
+0.2.1 - 2017-03-13
+##################
+- Fix the 0.2.0 release where the sdist included the whole wheelhouse
+
 0.2.0 - 2017-03-13
 ##################
 - Fix bug which would case non-string data in headers to fail (7770e84_)
