@@ -9,3 +9,5 @@ stage/*
 coverage.xml
 pytest-reports/
 htmlcov/
+dist/
+build/
