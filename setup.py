@@ -22,11 +22,11 @@ develop_requires = [
 cdir = osp.abspath(osp.dirname(__file__))
 README = open(osp.join(cdir, 'readme.rst')).read()
 CHANGELOG = open(osp.join(cdir, 'changelog.rst')).read()
-VERSION = open(osp.join(cdir, 'tribune', 'version.txt')).read().strip()
 
 setup(
     name="tribune",
-    version=VERSION,
+    setup_requires=['setuptools_scm'],
+    use_scm_version=True,
     description="A library for coding Excel reports in a declarative fashion",
     long_description='\n\n'.join((README, CHANGELOG)),
     author="Matt Lewellyn",
