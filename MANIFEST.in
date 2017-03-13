@@ -1,3 +1,10 @@
 recursive-include tribune *
 global-exclude *.pyc
+prune requirements
 include *.rst
+exclude .gitignore
+exclude circle.yml
+exclude docker-entry
+exclude docker-run-tests
+exclude wheelhouse.ini
+exclude tox.ini
