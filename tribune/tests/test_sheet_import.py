@@ -91,6 +91,15 @@ class TestSheetImport(object):
             lambda: parse_records([['Name', 'Age'], ['Ed', '27'], ['', '3.9']])
         )
 
+    def test_non_string_header(self):
+        parse_records = parse_records_with(si.SheetImporter([
+            si.Field('Age', 'age', p.parse_int)
+        ]))
+        assert_import_errors(
+            {'Expected "Age" in header cell A1.'},
+            lambda: parse_records([[29]])
+        )
+
     def test_sheet_import_with_modify_record(self):
         class TestImport(si.SheetImporter):
             fields = (
