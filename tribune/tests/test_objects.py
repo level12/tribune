@@ -79,6 +79,23 @@ class TestSheetDecl(object):
         base_row = PortraitRow('foo', Person.firstname)
         base_row.new_instance(None)
 
+    def test_deep_copy_sqlalchemy_tuple(self):
+        """
+        tribune supports tuple expressions as values (formulated as as a 3-tuple,
+        `(value1, value2, operator)`). As the tuple-values could be QueryableAttributes,
+        we don't necessarily want to deep-copy
+
+        :return:
+        """
+        base_row = PortraitRow('foo', (Person.intcol, -1, operator.mul))
+        base_row.new_instance(None)
+
+        base_row = PortraitRow('foo', (-1, Person.intcol, operator.mul))
+        base_row.new_instance(None)
+
+        base_row = PortraitRow('foo', ((Person.intcol, -1, operator.mul), -1, operator.mul))
+        base_row.new_instance(None)
+
     def test_deep_copy_unbound_method(self):
         """This test is kind of hard to set up, so it needs some explanation. A great deal of
         function objects are fine with the deep copy, but this particular case is not. What we

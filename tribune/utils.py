@@ -1,3 +1,5 @@
+import copy
+import string
 from itertools import (
     chain as _itertools_chain,
     count,
@@ -5,7 +7,6 @@ from itertools import (
     takewhile,
 )
 from functools import reduce
-import string
 
 from six.moves import map
 
@@ -53,6 +54,29 @@ def flatten(iterable):
     """Takes an iterable of iterables and flattens it by one layer (e.g. [[1],[2]] becomes [1,2]).
     """
     return list(_itertools_chain(*iterable))
+
+
+def deepcopy_tuple_except(tup, exceptions=type(None)):
+    """
+    Deeply-copy a nested tuple, but don't copy any items within the
+    tuple which have a type listed in `exceptions`
+
+    :param tup: the tuple to copy
+    :param exceptions: a set of types not to copy
+    :return: a clone of `tup`
+    """
+    result = []
+
+    for item in tup:
+        if isinstance(item, exceptions):
+            result.append(item)
+        else:
+            if isinstance(item, tuple):
+                result.append(deepcopy_tuple_except(item, exceptions))
+            else:
+                result.append(copy.deepcopy(item))
+
+    return tuple(result)
 
 
 def split_every(n, iterable):
