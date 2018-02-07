@@ -23,10 +23,14 @@ cdir = osp.abspath(osp.dirname(__file__))
 README = open(osp.join(cdir, 'readme.rst')).read()
 CHANGELOG = open(osp.join(cdir, 'changelog.rst')).read()
 
+version_fpath = osp.join(cdir, 'tribune', 'version.py')
+version_globals = {}
+with open(version_fpath) as fo:
+    exec(fo.read(), version_globals)
+
 setup(
     name="tribune",
-    setup_requires=['setuptools_scm'],
-    use_scm_version=True,
+    version=version_globals['VERSION'],
     description="A library for coding Excel reports in a declarative fashion",
     long_description='\n\n'.join((README, CHANGELOG)),
     author="Matt Lewellyn",
@@ -38,6 +42,9 @@ setup(
         'License :: OSI Approved :: BSD License',
         'Operating System :: OS Independent',
         'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
     ],
     license='BSD',
     packages=[
