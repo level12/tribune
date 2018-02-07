@@ -7,7 +7,10 @@ from blazeutils.spreadsheets import WriterX
 import six
 from xlsxwriter.format import Format
 
-from .utils import column_letter
+from .utils import (
+    column_letter,
+    deepcopy_tuple_except
+)
 
 # we do not want to make SA a dependency, just want to work with it when it is used
 try:
@@ -106,12 +109,23 @@ class SheetUnit(object):
             # SQLAlchemy attributes need special care for copying, don't deep copy these
             # Functions (FunctionType) also get the original object passed, as the copy lib does
             #   the same. This handling will avoid problems with decorated functions
-            if isinstance(v, (QueryableAttribute, FunctionType)):
-                setattr(result, k, v)
-                continue
 
-            # fall back to default copy operation
-            setattr(result, k, copy.deepcopy(v, memo))
+            deepcopy_exceptions = (QueryableAttribute, FunctionType)
+
+            if isinstance(v, deepcopy_exceptions):
+                # we have a value that we don't want to deepcopy, just assign it
+                setattr(result, k, v)
+
+            elif isinstance(v, tuple):
+                # tribune supports tuple expressions (see `_fetch_val`), which can
+                # be nested arbitrarily deep. We want to deep-copy all of the nested
+                # tuple, except for any QueryableAttributes
+                setattr(result, k, deepcopy_tuple_except(v, deepcopy_exceptions))
+
+            else:
+                # fall back to default copy operation
+                setattr(result, k, copy.deepcopy(v, memo))
+
         return result
 
 
