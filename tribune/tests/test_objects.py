@@ -243,40 +243,35 @@ class TestOutput(object):
         ws = self.generate_report()
         assert ws.cell_value(0, 0) == 'Cars'
 
-    def test_column_headings(self):
-        def checkit(ws, row, column, value):
-            assert ws.cell_value(row, column) == value
-
+    @pytest.mark.parametrize('row,column,value', [
+        (2, 0, ''),
+        (2, 1, 'Year'),
+        (2, 2, 'Make'),
+        (2, 3, 'Model'),
+        (2, 4, 'Style'),
+        (2, 5, 'Color'),
+        (2, 6, 'Blue'),
+        (3, 6, 'Book'),
+    ])
+    def test_column_headings(self, row, column, value):
         ws = self.generate_report()
-        for row, column, value in [
-            (2, 0, ''),
-            (2, 1, 'Year'),
-            (2, 2, 'Make'),
-            (2, 3, 'Model'),
-            (2, 4, 'Style'),
-            (2, 5, 'Color'),
-            (2, 6, 'Blue'),
-            (3, 6, 'Book'),
-        ]:
-            yield checkit, ws, row, column, value
+        assert ws.cell_value(row, column) == value
 
-    def test_column_data(self):
-        def checkit(ws, row, column, value):
-            assert ws.cell_value(row, column) == value
-
+    @pytest.mark.parametrize('data_row, data', enumerate(car_data(None)))
+    @pytest.mark.parametrize('header,key', [
+        ('Year', 'year'),
+        ('Make', 'make'),
+        ('Model', 'model'),
+        ('Style', 'style'),
+        ('Color', 'color'),
+        ('Blue', 'book_value'),
+    ])
+    def test_column_data(self, header, key, data_row, data):
         ws = self.generate_report()
-        for data_row, data in enumerate(car_data(None)):
-            row = data_row + 4
-            for column, value in [
-                (0, ''),
-                (find_sheet_col(ws, 'Year', 2), data['year']),
-                (find_sheet_col(ws, 'Make', 2), data['make']),
-                (find_sheet_col(ws, 'Model', 2), data['model']),
-                (find_sheet_col(ws, 'Style', 2), data['style']),
-                (find_sheet_col(ws, 'Color', 2), data['color']),
-                (find_sheet_col(ws, 'Blue', 2), data['book_value']),
-            ]:
-                yield checkit, ws, row, column, value
+        row = data_row + 4
+        col = header if isinstance(header, int) else find_sheet_col(ws, header, 2)
+        assert ws.cell_value(row, 0) == ''
+        assert ws.cell_value(row, col) == data[key]
 
     def test_merged_section_heading(self):
         class TestSheet(ReportSheet):
@@ -331,54 +326,33 @@ class TestPortraitOutput(object):
         ws = self.generate_report()
         assert ws.cell_value(0, 0) == 'Dealership'
 
-    def test_column_headings(self):
-        def checkit(ws, row, column, value):
-            assert ws.cell_value(row, column) == value
-
+    @pytest.mark.parametrize('row,column,value', [
+        (3, 0, ''),
+        (3, 1, 'Count'),
+        (3, 2, 'Income'),
+        (3, 3, 'Expense'),
+        (3, 4, 'Net'),
+    ])
+    def test_column_headings(self, row, column, value):
         ws = self.generate_report()
-        for row, column, value in [
-            (3, 0, ''),
-            (3, 1, 'Count'),
-            (3, 2, 'Income'),
-            (3, 3, 'Expense'),
-            (3, 4, 'Net'),
-        ]:
-            yield checkit, ws, row, column, value
+        assert ws.cell_value(row, column) == value
 
-    def test_row_data(self):
-        def checkit(ws, row, column, value):
-            assert ws.cell_value(row, column) == value
-
+    @pytest.mark.parametrize('row_header,column,value', [
+        ('Sales', 1, 5),
+        ('Sales', 2, 75000),
+        ('Sales', 3, 25000),
+        ('Sales', 4, 50000),
+        ('Rentals', 1, 46),
+        ('Rentals', 2, 8600),
+        ('Rentals', 3, 2900),
+        ('Rentals', 4, 5700),
+        ('Leases', 1, 27),
+        ('Leases', 2, 10548),
+        ('Leases', 3, 3680),
+        ('Leases', 4, 6868),
+        ('Totals', 4, 100000),
+    ])
+    def test_row_data(self, row_header, column, value):
         ws = self.generate_report()
-        row = find_sheet_row(ws, 'Sales', 0)
-        for column, value in [
-            (1, 5),
-            (2, 75000),
-            (3, 25000),
-            (4, 50000),
-        ]:
-            yield checkit, ws, row, column, value
-
-        row = find_sheet_row(ws, 'Rentals', 0)
-        for column, value in [
-            (1, 46),
-            (2, 8600),
-            (3, 2900),
-            (4, 5700),
-        ]:
-            yield checkit, ws, row, column, value
-
-        row = find_sheet_row(ws, 'Leases', 0)
-        for column, value in [
-            (1, 27),
-            (2, 10548),
-            (3, 3680),
-            (4, 6868),
-        ]:
-            yield checkit, ws, row, column, value
-
-        row = find_sheet_row(ws, 'Totals', 0)
-        for column, value in [
-            (4, 100000),
-        ]:
-            yield checkit, ws, row, column, value
+        row = find_sheet_row(ws, row_header, 0)
+        assert ws.cell_value(row, column) == value
