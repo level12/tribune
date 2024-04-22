@@ -18,6 +18,7 @@ def test_chain():
 
 
 def test_parse_text():
+    assert p.parse_text(None) == u''
     assert p.parse_text('') == u''
     assert p.parse_text('  ') == u''
     assert p.parse_text(' A ') == u'A'

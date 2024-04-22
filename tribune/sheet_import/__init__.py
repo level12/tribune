@@ -23,12 +23,25 @@ Example:
     records = MySheet().get_sheet_records(sheet)
 """
 import abc
+import warnings
 from collections import namedtuple
 from io import BytesIO
+from typing import BinaryIO, Union
+from zipfile import BadZipFile
 
-from blazeutils.spreadsheets import xlsx_to_reader
-import xlrd
+from blazeutils.spreadsheets import xlsx_to_reader, xlsx_to_strio
 from xlsxwriter import Workbook
+
+try:
+    import openpyxl
+    from openpyxl.utils.exceptions import InvalidFileException
+except ImportError:
+    openpyxl = None
+
+try:
+    import xlrd
+except ImportError:
+    xlrd = None
 
 import tribune
 
@@ -49,7 +62,12 @@ class SpreadsheetImportError(Exception):
         return '<SpreadsheetImportError: {}>'.format(self.errors)
 
 
-def workbook_safe_open(file_handle):
+def xlrd_workbook_safe_open(file_handle):
+    warnings.warn(
+        "xlrd support is deprecated and will be removed in a future version",
+        DeprecationWarning
+    )
+
     try:
         return xlrd.open_workbook(file_contents=file_handle.read())
     except xlrd.biffh.XLRDError as e:
@@ -58,12 +76,23 @@ def workbook_safe_open(file_handle):
         #   for user-friendliness
         if 'unsupported format' in msg.lower() or 'not supported' in msg.lower() \
                 or 'not a known type of workbook' in str(e).lower():
-            raise SpreadsheetImportError([u'File format is not recognized. Please upload an Excel'
+            raise SpreadsheetImportError(['File format is not recognized. Please upload an Excel'
                                           ' file (.xlsx or .xls).'])
         elif 'file size is 0 bytes' in msg.lower():
-            raise SpreadsheetImportError([u'File is empty.'])
+            raise SpreadsheetImportError(['File is empty.'])
         else:
             raise SpreadsheetImportError([msg])
+
+
+def workbook_safe_open(filename_or_filelike: Union[str, BinaryIO]):
+    if not openpyxl:
+        return xlrd_workbook_safe_open(filename_or_filelike)
+
+    try:
+        return openpyxl.load_workbook(filename_or_filelike, data_only=True)
+    except (BadZipFile, InvalidFileException):
+        raise SpreadsheetImportError(['File format is not recognized. Please upload an Excel'
+                                      ' file (.xlsx).'])
 
 
 def normalize_text(x):
@@ -73,6 +102,8 @@ def normalize_text(x):
 
 class Cell(object):
     """Represents a particular cell on a spreadsheet."""
+    is_zero_based = False
+
     def __init__(self, row, column):
         """
         :param row: is a 0-based row index.
@@ -82,10 +113,20 @@ class Cell(object):
         self.column = column
 
     def __str__(self):
-        return column_letter(self.column) + str(self.row + 1)
+        # If we're using openpyxl, column indices are one-based
+        return (
+            column_letter(self.column, self.is_zero_based)
+            + str(self.row + (1 if self.is_zero_based else 0))
+        )
 
 
-class SheetData(metaclass=abc.ABCMeta):
+class XlrdCell(Cell):
+    """Represents a single cell when reading sheets with xlrd, which uses
+    0-based indices."""
+    is_zero_based = True
+
+
+class SheetDataBase(metaclass=abc.ABCMeta):
     """An ABC that describes the minimum necessary API for importing a sheet."""
     @abc.abstractmethod
     def __len__(self):
@@ -96,8 +137,45 @@ class SheetData(metaclass=abc.ABCMeta):
         raise NotImplementedError()
 
 
-class XlrdSheetData(SheetData):
+class SheetData(SheetDataBase):
     def __init__(self, sheet):
+        self.sheet = sheet
+
+    def __len__(self):
+        return self.sheet.max_row
+
+    def cell_value(self, cell: Cell):
+        try:
+            return self.sheet.cell(cell.row, cell.column).value
+        except IndexError:
+            return ''
+
+    @classmethod
+    def from_nested_iters(cls, data):
+        """Builds a SheetData from nested iterables.
+
+        param data: is nested iterables representing data for each cell.
+                    For example, `[('A1', 'B1'), ('A2', 'B2')]` represents two rows and two columns
+                    of data.
+        """
+        workbook = Workbook(BytesIO())
+        sheet = workbook.add_worksheet('test')
+
+        for row, row_data in enumerate(data):
+            for column, cell_data in enumerate(row_data):
+                sheet.write(row, column, cell_data)
+
+        workbook = openpyxl.load_workbook(xlsx_to_strio(workbook))
+        sheet = workbook[workbook.sheetnames[0]]
+        return SheetData(sheet)
+
+
+class XlrdSheetData(SheetDataBase):
+    def __init__(self, sheet):
+        warnings.warn(
+            "xlrd support is deprecated and will be removed in a future version",
+            DeprecationWarning
+        )
         self.sheet = sheet
 
     def __len__(self):
@@ -127,7 +205,7 @@ class XlrdSheetData(SheetData):
         return XlrdSheetData(xlsx_to_reader(workbook).sheet_by_index(0))
 
 
-class NestedItersSheetData(SheetData):
+class NestedItersSheetData(SheetDataBase):
     """Wraps nested iterables to provide the SheetData API."""
 
     def __init__(self, data):
@@ -166,7 +244,10 @@ Field = namedtuple('Field', ['label', 'field', 'parser'])
 
 class SheetImporter(object):
     """A base class for defining how to parse a single spreadsheet."""
-    data_start_row = 1  # 0-based index where first row of data begins
+    data_start_row = 2  # openpyxl indices are 1-based
+    data_start_col = 1
+    is_zero_based = False
+    cell_cls = Cell
     fields = ()         # Ordered iterable of Field tuples
 
     def __init__(self, fields=None, data_start_row=None):
@@ -186,9 +267,10 @@ class SheetImporter(object):
         return [
             'Expected "{header}" in header cell {cell}.'.format(
                 header=field.label,
-                cell=Cell(header, col)
-            ) for col, field in enumerate(self.fields)
-            if normalize_text(sheet.cell_value(Cell(header, col))) != normalize_text(field.label)
+                cell=self.cell_cls(header, col)
+            ) for col, field in enumerate(self.fields, self.data_start_col)
+            if normalize_text(sheet.cell_value(self.cell_cls(header, col)))
+            != normalize_text(field.label)
         ]
 
     @staticmethod
@@ -211,8 +293,14 @@ class SheetImporter(object):
     def _parse_row(self, sheet, row):
         """Parses all the columns in a sheet at a given row index and returns aggregated errors or
         values (for every column) as an ErrorOrValue tuple."""
-        col_data = [self._parse_cell(field, Cell(row, col), sheet.cell_value(Cell(row, col)))
-                    for col, field in enumerate(self.fields)]
+        col_data = [
+            self._parse_cell(
+                field,
+                self.cell_cls(row, col),
+                sheet.cell_value(self.cell_cls(row, col)),
+            )
+            for col, field in enumerate(self.fields, self.data_start_col)
+        ]
         errors, values = aggregate_error_or_value(col_data)
         return ErrorOrValue(errors, None) if errors \
             else ErrorOrValue([], self.row_to_record(values))
@@ -220,7 +308,13 @@ class SheetImporter(object):
     def _parse_sheet_data(self, sheet):
         """Parses only the data rows from a sheet and returns aggregated errors or valuse as an
         ErrorOrValue tuple."""
-        return [self._parse_row(sheet, row) for row in range(self.data_start_row, len(sheet))]
+        return [
+            self._parse_row(sheet, row)
+            for row in range(
+                self.data_start_row,
+                len(sheet) + (1 if not self.is_zero_based else 0),
+            )
+        ]
 
     def _parse_sheet(self, sheet):
         """Parses a sheet (including the headers) and returns aggregated errors or values as an
@@ -268,3 +362,11 @@ class SheetImporter(object):
                 return []
 
         return NewReportSheet
+
+
+class XlrdSheetImporter(SheetImporter):
+    """A base class for defining how to parse a single spreadsheet."""
+    data_start_row = 1  # xlrd rows are 0-based
+    data_start_col = 0
+    cell_cls = XlrdCell
+    is_zero_based = True

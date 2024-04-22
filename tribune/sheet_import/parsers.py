@@ -20,6 +20,9 @@ def filter_(func):
 
 def parse_text(value):
     """Parses text as a unicode string and strips leading/trailing whitespace."""
+    if value is None:
+        # we do not want to return 'None' as a string, and chained ops will expect str
+        return ''
     return str(value).strip()
 
 

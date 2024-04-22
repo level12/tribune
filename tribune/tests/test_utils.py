@@ -8,15 +8,16 @@ from tribune.utils import (
 
 
 def test_column_letter():
-    assert column_letter(0) == 'A'
-    assert column_letter(2) == 'C'
-    assert column_letter(25) == 'Z'
-    assert column_letter(26) == 'AA'
-    assert column_letter(27) == 'AB'
-    assert column_letter(26*2) == 'BA'
-    assert column_letter(26*3) == 'CA'
-    assert column_letter(26**2+25) == 'ZZ'
-    assert column_letter(26**2+26) == 'AAA'
+    assert column_letter(1) == 'A'
+    assert column_letter(3) == 'C'
+    assert column_letter(26) == 'Z'
+    assert column_letter(27) == 'AA'
+    assert column_letter(28) == 'AB'
+    assert column_letter(26*2 + 1) == 'BA'
+    assert column_letter(26*3 + 1) == 'CA'
+    assert column_letter(26**2+26) == 'ZZ'
+    assert column_letter(26**2+27) == 'AAA'
+    assert column_letter(1, is_zero_based=True) == 'B'
 
 
 class TestDeepCopyTupleExcept(object):

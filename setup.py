@@ -11,7 +11,7 @@ develop_requires = [
     'BlazeUtils',
     'SQLAlchemy',
     'XlsxWriter',
-    'mock',
+    'openpyxl',
     'pytest',
     'pytest-cov',
     'wrapt',

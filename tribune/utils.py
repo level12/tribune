@@ -86,18 +86,20 @@ def split_every(n, iterable):
     return takewhile(bool, (list(islice(items, n)) for _ in count(0)))
 
 
-def column_letter(n):
+def column_letter(n, is_zero_based=False):
     """Returns the spreadsheet column name for a given 0-based column index.
 
     Adapted from http://stackoverflow.com/a/4532562/503377. Spreadsheet column names are a strange
     base-26 number (for 26 letters in the alphabet) where each place value is 1-based instead of
     0-based.
 
-    :param n: is a 0-based column index.
+    :param n: is an integer column index
+    :param is_zero_based: some libs zero-base int indices, so allow this to be controlled
     """
     alphabet = string.ascii_uppercase
 
-    n = n + 1  # Turn our 0-based number into a 1-based number.
+    if is_zero_based:
+        n = n + 1  # Turn our 0-based number into a 1-based number.
     name = ''  # initial column name
     while n > 0:
         n = n - 1  # Turn this place value into a 0-based number.

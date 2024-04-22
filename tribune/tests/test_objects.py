@@ -1,9 +1,9 @@
 import operator
 from io import BytesIO
+from unittest import mock
 
 from blazeutils.datastructures import BlankObject
 from blazeutils.spreadsheets import xlsx_to_reader
-import mock
 import pytest
 from xlsxwriter import Workbook
 import wrapt
