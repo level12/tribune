@@ -1,6 +1,6 @@
 from blazeutils.strings import randchars
 import sqlalchemy as sa
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 
 from .utils import DefaultMixin
 

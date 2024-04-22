@@ -4,7 +4,6 @@ import sys
 from types import FunctionType
 
 from blazeutils.spreadsheets import WriterX
-import six
 from xlsxwriter.format import Format
 
 from .utils import (
@@ -164,7 +163,7 @@ class SheetColumn(SheetUnit):
 
         # look for header values in kwargs, construct a header dict
         self._init_header = dict()
-        for k, v in six.iteritems(kwargs):
+        for k, v in kwargs.items():
             if k.startswith('header_'):
                 try:
                     self._init_header[int(k[7:])] = v
@@ -173,7 +172,7 @@ class SheetColumn(SheetUnit):
 
     def _construct_header_data(self, init_header):
         d = ['' for i in range(self.sheet.pre_data_rows)]
-        for k, v in six.iteritems(init_header):
+        for k, v in init_header.items():
             try:
                 d[k] = v
             except IndexError:
@@ -393,7 +392,7 @@ class ReportSheet(WriterX, SheetSection):
 
         # fetch records first, as units may need some data for initialization
         filter_args = dict([
-            (k[7:], v) for k, v in six.iteritems(kwargs) if k[:7] == 'filter_'
+            (k[7:], v) for k, v in kwargs.items() if k[:7] == 'filter_'
         ])
         self.records = self.fetch_records(**filter_args)
 

@@ -1,6 +1,5 @@
 import datetime as dt
 
-import six
 import sqlalchemy as sa
 import sqlalchemy.orm as saorm
 import sqlalchemy.sql as sasql
@@ -101,7 +100,7 @@ class MethodsMixin(object):
 
         mapper = saorm.object_mapper(self)
 
-        for key, value in six.iteritems(data):
+        for key, value in data.items():
             if isinstance(value, dict):
                 dbvalue = getattr(self, key)
                 rel_class = mapper.get_property(key).mapper.class_

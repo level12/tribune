@@ -11,3 +11,4 @@ pytest-reports/
 htmlcov/
 dist/
 build/
+.ci/

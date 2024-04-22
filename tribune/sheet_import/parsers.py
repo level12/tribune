@@ -1,9 +1,3 @@
-from six import text_type
-from six.moves import (
-    filter,
-    map,
-)
-
 from ..utils import (
     chain,
     raises,
@@ -26,7 +20,7 @@ def filter_(func):
 
 def parse_text(value):
     """Parses text as a unicode string and strips leading/trailing whitespace."""
-    return text_type(value).strip()
+    return str(value).strip()
 
 
 def parse_yes_no(value):
@@ -54,7 +48,7 @@ def parse_int(value):
 
 def parse_int_as_text(value):
     """Parses integers but converts them to unicode strings in the result."""
-    return text_type(parse_int(value))
+    return str(parse_int(value))
 
 
 def parse_number(value):
@@ -76,7 +70,7 @@ def parse_int_or_text(value):
 
 def default_to(default):
     """Returns a parser that gives the provided default if the value is empty."""
-    return lambda value: default if value is None or text_type(value).strip() == '' else value
+    return lambda value: default if value is None or str(value).strip() == '' else value
 
 
 def nullable(parser):

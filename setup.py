@@ -14,9 +14,8 @@ develop_requires = [
     'mock',
     'pytest',
     'pytest-cov',
-    'six',
     'wrapt',
-    'xlrd',
+    'xlrd<2',
 ]
 
 cdir = osp.abspath(osp.dirname(__file__))
@@ -54,7 +53,6 @@ setup(
     include_package_data=True,
     install_requires=[
         'BlazeUtils',
-        'six',
         'xlsxwriter',
     ],
 )

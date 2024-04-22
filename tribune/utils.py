@@ -8,8 +8,6 @@ from itertools import (
 )
 from functools import reduce
 
-from six.moves import map
-
 
 def raises(e):
     """A functional form of `raise`."""

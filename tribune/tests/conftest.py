@@ -9,7 +9,7 @@ def pytest_configure(config):
 
     from tribune.tests import entities
     entities.meta.bind = engine
-    entities.meta.create_all()
+    entities.meta.create_all(engine)
     entities.session = session
     for x in range(1, 50):
         p = entities.Person()

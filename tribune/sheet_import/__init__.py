@@ -27,8 +27,6 @@ from collections import namedtuple
 from io import BytesIO
 
 from blazeutils.spreadsheets import xlsx_to_reader
-from six import with_metaclass, text_type
-from six.moves import filter
 import xlrd
 from xlsxwriter import Workbook
 
@@ -70,7 +68,7 @@ def workbook_safe_open(file_handle):
 
 def normalize_text(x):
     """Normalizes a string by stripping whitespace and flattening case."""
-    return text_type(x).strip().lower()
+    return str(x).strip().lower()
 
 
 class Cell(object):
@@ -87,7 +85,7 @@ class Cell(object):
         return column_letter(self.column) + str(self.row + 1)
 
 
-class SheetData(with_metaclass(abc.ABCMeta)):
+class SheetData(metaclass=abc.ABCMeta):
     """An ABC that describes the minimum necessary API for importing a sheet."""
     @abc.abstractmethod
     def __len__(self):

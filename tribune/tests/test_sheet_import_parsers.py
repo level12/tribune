@@ -6,7 +6,7 @@ from .utils import assert_import_errors
 
 
 def assert_really_equal(left, right):
-    assert type(left) == type(right)
+    assert type(left) is type(right)
     assert left == right
 
 
