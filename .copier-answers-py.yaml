@@ -1,0 +1,10 @@
+# Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
+_commit: v0.20240517.2
+_src_path: copier-py-package/
+author_email: matt.lewellyn@level12.io
+author_name: Matt Lewellyn
+project_name: tribune
+py_module: tribune
+python_version: '3.12'
+script_name: ''
+use_pipx: true

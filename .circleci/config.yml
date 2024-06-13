@@ -1,41 +1,31 @@
 version: 2
 jobs:
-    python-test:
-        docker:
-            - image: level12/python-test-multi
+  build:
+    docker:
+      - image: cimg/python:3.12
+    steps:
+      - checkout
 
-        steps:
-            - checkout
+      - run:
+          name: Debugging info
+          command: |
+              ls -al
+              echo $PATH
 
-            - run:
-                name: folder listing for debugging
-                command: ls -al
+      - run:
+          name: Install OS tools
+          command: |
+              python -m pip install -r requirements/ci.txt
+              python --version
+              python -m nox --version
 
-            - run:
-                name: install tox from pypi
-                command: >
-                    python3.11 -m pip install --upgrade --force-reinstall --quiet tox
+      - run:
+          name: run nox
+          command: python -m nox
 
-            - run:
-                name: version checks
-                command: |
-                    python3.11 --version
-                    pip --version
-                    tox --version
+      - store_test_results:
+          path: ci/test-reports/
 
-            - run:
-                name: run tox
-                command: tox
-
-            - store_test_results:
-                path: .ci/test-reports/
-
-            - run:
-                name: push code coverage
-                command: bash <(curl -s https://codecov.io/bash) -X coveragepy
-
-workflows:
-    version: 2
-    build:
-        jobs:
-            - python-test
+      # - run:
+      #     name: push code coverage
+      #     command: bash scripts/codecov-verify && bash codecov -X coveragepy -t 197f7fad-3f49-49fc-a2ec-2dbee41989f0

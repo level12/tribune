@@ -1,14 +1,18 @@
-*.komodo*
 *.pyc
 *.egg-info
-dist/*
-stage/*
-.tox/*
-.coverage
-.cache/
-coverage.xml
-pytest-reports/
-htmlcov/
-dist/
-build/
-.ci/
+*.coverage
+/.tox
+/.nonx
+/coverage.xml
+/.pytests.xml
+/htmlcov
+.pytest_cache
+
+# .env file for Flask development server
+.flaskenv
+
+# Visual Studio Code clutter
+.vscode
+
+# Pycharm / JetBrains clutter
+.idea

@@ -1,0 +1,19 @@
+[build-system]
+requires = [
+    'hatchling',
+    'hatch-requirements-txt',
+    'hatch-regex-commit',
+]
+build-backend = 'hatchling.build'
+
+
+[project]
+name = 'tribune'
+authors = [{name = 'Matt Lewellyn', email = 'matt.lewellyn@level12.io'}]
+dynamic = ['dependencies', 'optional-dependencies', 'version']
+
+
+
+[tool.reqs]
+
+sync_pipx = true

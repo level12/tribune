@@ -1,7 +1,0 @@
-recursive-include tribune *
-global-exclude *.pyc
-prune requirements
-prune .circleci
-include *.rst
-exclude .gitignore
-exclude tox.ini
