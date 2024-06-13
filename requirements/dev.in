@@ -1,4 +1,4 @@
--r base.txt
+-r test.txt
 
 # From copier-py-package (keep comment for easier copier upgrades)
 click

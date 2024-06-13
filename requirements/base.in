@@ -1,11 +1,2 @@
-# From copier-py-package (keep comment for easier copier upgrades)
-pytest
-pytest-cov
-
-# App specific (ditto)
 BlazeUtils
-SQLAlchemy
-openpyxl
-wrapt
-xlrd<2
 XlsxWriter

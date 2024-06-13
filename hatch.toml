@@ -5,7 +5,7 @@ dev-mode-dirs = ['src']
 
 ## Dependencies
 [metadata.hooks.requirements_txt]
-files = ['requirements/base.txt']
+files = ['requirements/base.in']
 
 [metadata.hooks.requirements_txt.optional-dependencies]
 dev = ['requirements/dev.txt']
