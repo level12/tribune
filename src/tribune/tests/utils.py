@@ -14,9 +14,10 @@ from tribune.sheet_import import SpreadsheetImportError
 #       within, and starting/ending indices
 #   returns -1 if the value is not found
 
+
 def find_sheet_row(sheet, needle, column, start=0, end=100):
     try:
-        for x in range(start, end+1):
+        for x in range(start, end + 1):
             if sheet.cell_value(x, column) == needle:
                 return x
     except IndexError:
@@ -26,7 +27,7 @@ def find_sheet_row(sheet, needle, column, start=0, end=100):
 
 def find_sheet_col(sheet, needle, row, start=0, end=100):
     try:
-        for x in range(start, end+1):
+        for x in range(start, end + 1):
             if sheet.cell_value(row, x) == needle:
                 return x
     except IndexError:
@@ -37,27 +38,36 @@ def find_sheet_col(sheet, needle, row, start=0, end=100):
 def assert_import_errors(errors, func):
     try:
         func()
-        assert False, 'Did not raise SpreadsheetImportError'
+        raise AssertionError('Did not raise SpreadsheetImportError')
     except SpreadsheetImportError as e:
         assert set(e.errors) == set(errors)
 
 
-class DefaultColsMixin(object):
+class DefaultColsMixin:
     id = sa.Column(sa.Integer, primary_key=True)
-    createdts = sa.Column(sa.DateTime, nullable=False, default=dt.datetime.now,
-                          server_default=sasql.text('CURRENT_TIMESTAMP'))
-    updatedts = sa.Column(sa.DateTime, nullable=False, default=dt.datetime.now,
-                          server_default=sasql.text('CURRENT_TIMESTAMP'), onupdate=dt.datetime.now)
+    createdts = sa.Column(
+        sa.DateTime,
+        nullable=False,
+        default=dt.datetime.now,
+        server_default=sasql.text('CURRENT_TIMESTAMP'),
+    )
+    updatedts = sa.Column(
+        sa.DateTime,
+        nullable=False,
+        default=dt.datetime.now,
+        server_default=sasql.text('CURRENT_TIMESTAMP'),
+        onupdate=dt.datetime.now,
+    )
 
 
 @wrapt.decorator
 def transaction(f, decorated_obj, args, kwargs):
     """
-        decorates a function so that a DB transaction is always committed after
-        the wrapped function returns and also rolls back the transaction if
-        an unhandled exception occurs.
+    decorates a function so that a DB transaction is always committed after
+    the wrapped function returns and also rolls back the transaction if
+    an unhandled exception occurs.
 
-        'ncm' = non class method (version)
+    'ncm' = non class method (version)
     """
     from tribune.tests.entities import session as dbsess
 
@@ -72,15 +82,16 @@ def transaction(f, decorated_obj, args, kwargs):
 
 def transaction_classmethod(f):
     """
-        like transaction() but makes the function a class method
+    like transaction() but makes the function a class method
     """
     return transaction(classmethod(f))
 
 
-class MethodsMixin(object):
+class MethodsMixin:
     @classmethod
     def _sa_sess(cls):
         from .entities import session
+
         return session
 
     @transaction_classmethod
@@ -108,22 +119,19 @@ class MethodsMixin(object):
 
                 # If the data doesn't contain any pk, and the relationship
                 # already has a value, update that record.
-                if not [1 for p in pk_props if p.key in data] and \
-                   dbvalue is not None:
+                if not [1 for p in pk_props if p.key in data] and dbvalue is not None:
                     dbvalue.from_dict(value)
                 else:
                     record = rel_class.update_or_create(value)
                     setattr(self, key, record)
-            elif isinstance(value, list) and \
-                    value and isinstance(value[0], dict):
-
+            elif isinstance(value, list) and value and isinstance(value[0], dict):
                 rel_class = mapper.get_property(key).mapper.class_
                 new_attr_value = []
                 for row in value:
                     if not isinstance(row, dict):
                         raise Exception(
                             'Cannot send mixed (dict/non dict) data '
-                            'to list relationships in from_dict data.'
+                            'to list relationships in from_dict data.',
                         )
                     record = rel_class.update_or_create(row)
                     new_attr_value.append(record)

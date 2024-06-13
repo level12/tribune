@@ -1,7 +1,9 @@
 from collections import defaultdict
 
 import pytest
+
 import tribune.sheet_import.parsers as p
+
 from .utils import assert_import_errors
 
 
@@ -18,10 +20,10 @@ def test_chain():
 
 
 def test_parse_text():
-    assert p.parse_text(None) == u''
-    assert p.parse_text('') == u''
-    assert p.parse_text('  ') == u''
-    assert p.parse_text(' A ') == u'A'
+    assert p.parse_text(None) == ''
+    assert p.parse_text('') == ''
+    assert p.parse_text('  ') == ''
+    assert p.parse_text(' A ') == 'A'
 
 
 def test_parse_yes_no():
@@ -33,7 +35,7 @@ def test_parse_yes_no():
     assert p.parse_yes_no('  NO  ') is False
 
     for case in {'yen', 'YEN', ''}:
-        assert_import_errors({'must be "yes" or "no"'}, lambda: p.parse_yes_no(case))
+        assert_import_errors({'must be "yes" or "no"'}, lambda case=case: p.parse_yes_no(case))
 
 
 def test_parse_int():
@@ -47,11 +49,11 @@ def test_parse_int():
     assert_really_equal(p.parse_int(1), 1)
 
     for case in {'', 'a', '1ob', 'ob1', '3.2', 'one'}:
-        assert_import_errors({'must be an integer'}, lambda: p.parse_int(case))
+        assert_import_errors({'must be an integer'}, lambda case=case: p.parse_int(case))
 
 
 def test_parse_int_as_text():
-    assert_really_equal(p.parse_int_as_text('1'), u'1')
+    assert_really_equal(p.parse_int_as_text('1'), '1')
 
 
 def test_parse_number():
@@ -63,18 +65,18 @@ def test_parse_number():
     assert_really_equal(p.parse_number(1.0), 1.0)
 
     for case in {'', 'a1', '1a', 'one'}:
-        assert_import_errors({'must be a number'}, lambda: p.parse_number(case))
+        assert_import_errors({'must be a number'}, lambda case=case: p.parse_number(case))
 
 
 def test_parse_int_or_text():
-    assert_really_equal(p.parse_int_or_text(''), u'')
-    assert_really_equal(p.parse_int_or_text('   '), u'')
-    assert_really_equal(p.parse_int_or_text('1'), u'1')
-    assert_really_equal(p.parse_int_or_text('1.0'), u'1')
-    assert_really_equal(p.parse_int_or_text(' 937'), u'937')
-    assert_really_equal(p.parse_int_or_text('1e3'), u'1000')
-    assert_really_equal(p.parse_int_or_text('a b c'), u'a b c')
-    assert_really_equal(p.parse_int_or_text('  a b c  '), u'a b c')
+    assert_really_equal(p.parse_int_or_text(''), '')
+    assert_really_equal(p.parse_int_or_text('   '), '')
+    assert_really_equal(p.parse_int_or_text('1'), '1')
+    assert_really_equal(p.parse_int_or_text('1.0'), '1')
+    assert_really_equal(p.parse_int_or_text(' 937'), '937')
+    assert_really_equal(p.parse_int_or_text('1e3'), '1000')
+    assert_really_equal(p.parse_int_or_text('a b c'), 'a b c')
+    assert_really_equal(p.parse_int_or_text('  a b c  '), 'a b c')
 
 
 def test_default_to():
@@ -122,11 +124,15 @@ def test_validate_max_length():
     assert p.validate_max_length(1)('a') == 'a'
     assert p.validate_max_length(2)('a') == 'a'
     assert p.validate_max_length(200)('a') == 'a'
-    assert p.validate_max_length(200)('a'*200) == 'a'*200
-    assert_import_errors({'must be no more than 1 characters long'},
-                         lambda: p.validate_max_length(1)('ab'))
-    assert_import_errors({'must be no more than 200 characters long'},
-                         lambda: p.validate_max_length(200)('a'*201))
+    assert p.validate_max_length(200)('a' * 200) == 'a' * 200
+    assert_import_errors(
+        {'must be no more than 1 characters long'},
+        lambda: p.validate_max_length(1)('ab'),
+    )
+    assert_import_errors(
+        {'must be no more than 200 characters long'},
+        lambda: p.validate_max_length(200)('a' * 201),
+    )
 
 
 def test_validate_min():
@@ -139,12 +145,9 @@ def test_validate_min():
     assert p.validate_min(float('-inf'))(1) == 1
     assert p.validate_min(100)(100) == 100
 
-    assert_import_errors({'number must be no less than 12'},
-                         lambda: p.validate_min(12)(11))
-    assert_import_errors({'number must be no less than -30'},
-                         lambda: p.validate_min(-30)(-31))
-    assert_import_errors({'number must be no less than 3.9'},
-                         lambda: p.validate_min(3.9)(3.8))
+    assert_import_errors({'number must be no less than 12'}, lambda: p.validate_min(12)(11))
+    assert_import_errors({'number must be no less than -30'}, lambda: p.validate_min(-30)(-31))
+    assert_import_errors({'number must be no less than 3.9'}, lambda: p.validate_min(3.9)(3.8))
 
 
 def test_validate_max():
@@ -154,21 +157,22 @@ def test_validate_max():
     assert p.validate_max(float('inf'))(1) == 1
     assert p.validate_max(100)(100) == 100
 
-    assert_import_errors({'number must be no greater than 12'},
-                         lambda: p.validate_max(12)(13))
-    assert_import_errors({'number must be no greater than -30'},
-                         lambda: p.validate_max(-30)(-29))
-    assert_import_errors({'number must be no greater than 3.9'},
-                         lambda: p.validate_max(3.9)(4))
+    assert_import_errors({'number must be no greater than 12'}, lambda: p.validate_max(12)(13))
+    assert_import_errors({'number must be no greater than -30'}, lambda: p.validate_max(-30)(-29))
+    assert_import_errors({'number must be no greater than 3.9'}, lambda: p.validate_max(3.9)(4))
 
 
 def test_validate_range():
     assert p.validate_range(-30, 30)(0) == 0
 
-    assert_import_errors({'number must be no greater than 30'},
-                         lambda: p.validate_range(-30, 30)(31))
-    assert_import_errors({'number must be no less than -30'},
-                         lambda: p.validate_range(-30, 30)(-31))
+    assert_import_errors(
+        {'number must be no greater than 30'},
+        lambda: p.validate_range(-30, 30)(31),
+    )
+    assert_import_errors(
+        {'number must be no less than -30'},
+        lambda: p.validate_range(-30, 30)(-31),
+    )
 
 
 def test_validate_unique():
@@ -199,25 +203,27 @@ def test_validate_one_of():
         with pytest.raises(p.SpreadsheetImportError):
             p.validate_one_of(others)(value)
 
-    assert_import_errors({u'must be a valid thing'}, lambda: p.validate_one_of({1})(2))
-    assert_import_errors({u'must be a valid chicken'},
-                         lambda: p.validate_one_of({1}, thing='chicken')(2))
+    assert_import_errors({'must be a valid thing'}, lambda: p.validate_one_of({1})(2))
     assert_import_errors(
-        {u'must be a valid chicken: 1, 2, 3'},
-        lambda: p.validate_one_of([1, 2, 3], thing='chicken', show_choices_in_error=True)(4)
+        {'must be a valid chicken'},
+        lambda: p.validate_one_of({1}, thing='chicken')(2),
+    )
+    assert_import_errors(
+        {'must be a valid chicken: 1, 2, 3'},
+        lambda: p.validate_one_of([1, 2, 3], thing='chicken', show_choices_in_error=True)(4),
     )
 
 
 def test_parse_list():
-    assert p.parse_list(delim=' ')('') == [u'']
-    assert p.parse_list(delim=' ')('a') == [u'a']
-    assert p.parse_list(delim=' ')('  a   ') == [u'a']
-    assert p.parse_list(delim=',')('  a   ') == [u'a']
-    assert p.parse_list(delim=' ')('a b') == [u'a', u'b']
-    assert p.parse_list(delim=',')('a b') == [u'a b']
-    assert p.parse_list(delim=',')('a, b, c') == [u'a', u' b', u' c']
-    assert p.parse_list(p.parse_text, delim=',')('a, b, c') == [u'a', u'b', u'c']
-    assert p.parse_list(lambda x: x.upper(), delim=',')('a,b,c') == [u'A', u'B', u'C']
+    assert p.parse_list(delim=' ')('') == ['']
+    assert p.parse_list(delim=' ')('a') == ['a']
+    assert p.parse_list(delim=' ')('  a   ') == ['a']
+    assert p.parse_list(delim=',')('  a   ') == ['a']
+    assert p.parse_list(delim=' ')('a b') == ['a', 'b']
+    assert p.parse_list(delim=',')('a b') == ['a b']
+    assert p.parse_list(delim=',')('a, b, c') == ['a', ' b', ' c']
+    assert p.parse_list(p.parse_text, delim=',')('a, b, c') == ['a', 'b', 'c']
+    assert p.parse_list(lambda x: x.upper(), delim=',')('a,b,c') == ['A', 'B', 'C']
 
 
 def test_parse_lookup():

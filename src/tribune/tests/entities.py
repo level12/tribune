@@ -4,6 +4,7 @@ from sqlalchemy.orm import declarative_base
 
 from .utils import DefaultMixin
 
+
 meta = sa.MetaData()
 session = None
 Base = declarative_base(metadata=meta)
@@ -19,7 +20,7 @@ class Person(Base, DefaultMixin):
     floatcol = sa.Column(sa.Float)
 
     def __repr__(self):
-        return '<Person: "%s, created: %s">' % (self.id, self.createdts)
+        return f'<Person: "{self.id}, created: {self.createdts}">'
 
     @classmethod
     def testing_create(cls, **kwargs):

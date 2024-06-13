@@ -1,12 +1,14 @@
 import copy
-import string
+from functools import reduce
 from itertools import (
     chain as _itertools_chain,
+)
+from itertools import (
     count,
     islice,
     takewhile,
 )
-from functools import reduce
+import string
 
 
 def raises(e):
@@ -45,16 +47,17 @@ def unzip(iterable):
 
     :returns: an iterable of the unzipped input.
     """
-    return map(list, zip(*iterable))
+    return map(list, zip(*iterable, strict=True))
 
 
 def flatten(iterable):
-    """Takes an iterable of iterables and flattens it by one layer (e.g. [[1],[2]] becomes [1,2]).
+    """
+    Takes an iterable of iterables and flattens it by one layer (e.g. [[1],[2]] becomes [1,2]).
     """
     return list(_itertools_chain(*iterable))
 
 
-def deepcopy_tuple_except(tup, exceptions=type(None)):
+def deepcopy_tuple_except(tup, exceptions=None):
     """
     Deeply-copy a nested tuple, but don't copy any items within the
     tuple which have a type listed in `exceptions`
@@ -63,6 +66,8 @@ def deepcopy_tuple_except(tup, exceptions=type(None)):
     :param exceptions: a set of types not to copy
     :return: a clone of `tup`
     """
+    if exceptions is None:
+        exceptions = type(None)
     result = []
 
     for item in tup:
