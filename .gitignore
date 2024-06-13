@@ -4,7 +4,7 @@
 /.tox
 /.nonx
 /coverage.xml
-/.pytests.xml
+*pytests.xml
 /htmlcov
 .pytest_cache
 
@@ -16,3 +16,6 @@
 
 # Pycharm / JetBrains clutter
 .idea
+
+# Nox
+build

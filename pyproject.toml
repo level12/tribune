@@ -11,9 +11,3 @@ build-backend = 'hatchling.build'
 name = 'tribune'
 authors = [{name = 'Matt Lewellyn', email = 'matt.lewellyn@level12.io'}]
 dynamic = ['dependencies', 'optional-dependencies', 'version']
-
-
-
-[tool.reqs]
-
-sync_pipx = true
