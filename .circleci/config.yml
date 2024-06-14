@@ -1,8 +1,12 @@
-version: 2
+version: 2.1
+
+orbs:
+  codecov: codecov/codecov@4.1.0
+
 jobs:
   build:
     docker:
-      - image: cimg/python:3.12
+      - image: level12/python-test-multi
     steps:
       - checkout
 
@@ -15,17 +19,16 @@ jobs:
       - run:
           name: Install OS tools
           command: |
-              python -m pip install -r requirements/ci.txt
-              python --version
-              python -m nox --version
+              python3.12 -m pip install -r requirements/ci.txt
+              python3.12 --version
+              python3.12 -m nox --version
 
       - run:
           name: run nox
-          command: python -m nox
+          command: python3.12 -m nox
 
       - store_test_results:
           path: ci/test-reports/
 
-      # - run:
-      #     name: push code coverage
-      #     command: bash scripts/codecov-verify && bash codecov -X coveragepy -t 197f7fad-3f49-49fc-a2ec-2dbee41989f0
+      - codecov/upload:
+          file: ci/test-reports/tests-3.12.pytests.xml
