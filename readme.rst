@@ -1,3 +1,9 @@
+.. image:: https://dl.circleci.com/status-badge/img/gh/level12/tribune/tree/master.svg?style=svg
+    :target: https://dl.circleci.com/status-badge/redirect/gh/level12/tribune/tree/master
+
+.. image:: https://codecov.io/gh/level12/tribune/graph/badge.svg?token=Hd3Yzn6yJS
+    :target: https://codecov.io/gh/level12/tribune
+
 Introduction
 ---------------
 

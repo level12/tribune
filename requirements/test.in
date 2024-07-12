@@ -1,0 +1,8 @@
+-r base.txt
+
+SQLAlchemy
+openpyxl
+pytest
+pytest-cov
+wrapt
+xlrd<2

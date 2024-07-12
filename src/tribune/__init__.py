@@ -1,3 +1,4 @@
+from contextlib import suppress
 import copy
 from decimal import Decimal
 import sys
@@ -6,16 +7,15 @@ from types import FunctionType
 from blazeutils.spreadsheets import WriterX
 from xlsxwriter.format import Format
 
-from .utils import (
-    column_letter,
-    deepcopy_tuple_except
-)
+from .utils import column_letter, deepcopy_tuple_except
+
 
 # we do not want to make SA a dependency, just want to work with it when it is used
 try:
     from sqlalchemy.orm.attributes import QueryableAttribute
 except ImportError:
-    class QueryableAttribute(object):
+
+    class QueryableAttribute:
         pass
 
 
@@ -45,9 +45,9 @@ def _fetch_val(record, key):
         #   (SA-col-1/string/int, SA-col-2/string/int, operator)
         val = key[2](
             _fetch_val(record, key[0]),
-            _fetch_val(record, key[1])
+            _fetch_val(record, key[1]),
         )
-    elif not isinstance(key, (str, int, float, Decimal)):
+    elif not isinstance(key, str | int | float | Decimal):
         # must be a SA-col, find the key and hit the record
         datakey = getattr(key, 'key', getattr(key, 'name', None))
         val = getattr(record, datakey)
@@ -63,8 +63,8 @@ class ProgrammingError(Exception):
 
 class _SheetDeclarativeMeta(type):
     """
-        Metaclass to define/create units on a sheet section
-        Borrowed in part from WebGrid's Grid setup
+    Metaclass to define/create units on a sheet section
+    Borrowed in part from WebGrid's Grid setup
     """
 
     def __new__(cls, name, bases, class_dict):
@@ -77,14 +77,14 @@ class _SheetDeclarativeMeta(type):
         class_units.extend(class_dict.get('__cls_units__', ()))
         class_dict['__cls_units__'] = class_units
 
-        return super(_SheetDeclarativeMeta, cls).__new__(cls, name, bases, class_dict)
+        return super().__new__(cls, name, bases, class_dict)
 
 
-class SheetUnit(object):
+class SheetUnit:
     # Basic sheet object, can be a row or a column
 
     def __new__(cls, *args, **kwargs):
-        col_inst = super(SheetUnit, cls).__new__(cls)
+        col_inst = super().__new__(cls)
         if '_dont_assign' not in kwargs:
             col_inst._assign_to_section()
         return col_inst
@@ -130,25 +130,33 @@ class SheetUnit(object):
 
 class SheetColumn(SheetUnit):
     """
-        Basic column for a spreadsheet report. Holds the SQLAlchemy
-        column and has methods for rendering various kinds of rows
+    Basic column for a spreadsheet report. Holds the SQLAlchemy
+    column and has methods for rendering various kinds of rows
     """
+
     def new_instance(self, sheet):
         column = SheetUnit.new_instance(self, sheet)
         column._construct_header_data(self._init_header)
 
         return column
 
-    def __init__(self, key=None, sheet=None, write_header_func=None, write_data_func=None,
-                 write_total_func=None, **kwargs):
+    def __init__(
+        self,
+        key=None,
+        sheet=None,
+        write_header_func=None,
+        write_data_func=None,
+        write_total_func=None,
+        **kwargs,
+    ):
         """
-            header_# in kwargs used to override default (blank) heading values
-            write_*_func can override the class methods
+        header_# in kwargs used to override default (blank) heading values
+        write_*_func can override the class methods
         """
         # key can be one of many types: str, Decimal, int, float, SA column,
         #   or a tuple of the above (with an operator)
         self.expr = None
-        if key is not None and not isinstance(key, (str, tuple, Decimal, int, float)):
+        if key is not None and not isinstance(key, str | tuple | Decimal | int | float):
             self.expr = col = key
             # use column.key, column.name, or None in that order
             key = getattr(col, 'key', getattr(col, 'name', None))
@@ -162,21 +170,19 @@ class SheetColumn(SheetUnit):
         self.write_total = write_total_func or self.write_total
 
         # look for header values in kwargs, construct a header dict
-        self._init_header = dict()
+        self._init_header = {}
         for k, v in kwargs.items():
             if k.startswith('header_'):
-                try:
+                with suppress(ValueError):
                     self._init_header[int(k[7:])] = v
-                except ValueError:
-                    pass
 
     def _construct_header_data(self, init_header):
         d = ['' for i in range(self.sheet.pre_data_rows)]
         for k, v in init_header.items():
             try:
                 d[k] = v
-            except IndexError:
-                raise ProgrammingError('not enough pre-data rows on sheet')
+            except IndexError as e:
+                raise ProgrammingError('not enough pre-data rows on sheet') from e
         self.header_data = d
 
     def xls_width_calc(self, value):
@@ -195,7 +201,7 @@ class SheetColumn(SheetUnit):
             return
         self.xls_computed_width = max(
             self.xls_computed_width,
-            self.xls_width_calc(value)
+            self.xls_width_calc(value),
         )
 
     def adjust_col_width(self):
@@ -244,11 +250,12 @@ class SheetColumn(SheetUnit):
 
 class SheetPortraitColumn(SheetColumn):
     """
-        Column for ReportPortraitSheet. Not tied to a specific data field
-        (as that will change from row to row), but tracks column width needed
+    Column for ReportPortraitSheet. Not tied to a specific data field
+    (as that will change from row to row), but tracks column width needed
     """
+
     def __init__(self, record=None, *args, **kwargs):
-        super(SheetPortraitColumn, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.xls_computed_width = 0
         self.record = record
 
@@ -271,8 +278,8 @@ class LabeledColumn(SheetColumn):
         if label:
             label_rows = label.split('\n')
             for i_row, label_string in enumerate(label_rows):
-                kwargs['header_{0}'.format(self.header_start_row + i_row)] = label_string
-        super(LabeledColumn, self).__init__(key=key, **kwargs)
+                kwargs[f'header_{self.header_start_row + i_row}'] = label_string
+        super().__init__(key=key, **kwargs)
 
 
 class PortraitRow(SheetUnit):
@@ -313,14 +320,18 @@ class PortraitRow(SheetUnit):
     def render(self):
         raise NotImplementedError
 
-    def update_format(self, label={}, value={}):
+    def update_format(self, label=None, value=None):
+        if label is None:
+            label = {}
+        if value is None:
+            value = {}
         self.column_format['label'].update(label)
         self.column_format['value'].update(value)
 
 
-class TotaledMixin(object):
+class TotaledMixin:
     def write_total(self):
-        sum_begin = self.sheet.pre_data_rows+1
+        sum_begin = self.sheet.pre_data_rows + 1
         sum_end = self.sheet.rownum
         if sum_begin > sum_end:
             # no data rows
@@ -330,20 +341,21 @@ class TotaledMixin(object):
             '=SUM({0}{1}:{0}{2})'.format(
                 column_letter(self.sheet.colnum),
                 sum_begin,
-                sum_end
+                sum_end,
             ),
-            self.format_total()
+            self.format_total(),
         )
 
 
 class SheetSection(SheetUnit):
     """
-        Groups SheetColumns together. May override heading render for
-        individual columns (e.g. need a merged cell to head the section)
+    Groups SheetColumns together. May override heading render for
+    individual columns (e.g. need a merged cell to head the section)
 
-        If a sheet references a section, it will not reference the individual
-        columns directly but depend on the section to police its own
+    If a sheet references a section, it will not reference the individual
+    columns directly but depend on the section to police its own
     """
+
     __metaclass__ = _SheetDeclarativeMeta
     __cls_units__ = ()
 
@@ -387,13 +399,11 @@ class ReportSheet(WriterX, SheetSection):
         self.parent_book = parent_book
         if not worksheet:
             worksheet = parent_book.add_worksheet(self.sheet_name)
-        super(ReportSheet, self).__init__(ws=worksheet)
+        super().__init__(ws=worksheet)
         self.set_base_style_dicts()
 
         # fetch records first, as units may need some data for initialization
-        filter_args = dict([
-            (k[7:], v) for k, v in kwargs.items() if k[:7] == 'filter_'
-        ])
+        filter_args = {k[7:]: v for k, v in kwargs.items() if k[:7] == 'filter_'}
         self.records = self.fetch_records(**filter_args)
 
         # list of (row,col) tuples to guard when writing. Idea here is to have
@@ -445,8 +455,9 @@ class ReportSheet(WriterX, SheetSection):
         # takes dicts such as those defined in set_base_styles, combines
         #   left-to-right, returns dict
         def add_dicts(a, b):
-            return dict(list(a.items()) + list(b.items()) +
-                        [(k, a[k] + b[k]) for k in set(b) & set(a)])
+            return dict(
+                list(a.items()) + list(b.items()) + [(k, a[k] + b[k]) for k in set(b) & set(a)],
+            )
 
         style = args[0]
         if len(args) == 1:
@@ -465,7 +476,7 @@ class ReportSheet(WriterX, SheetSection):
 
     def write_simple_merge(self, num_cols, data, style=None):
         """shorthand for WriterX.write_merge, for merge on single row
-            data: can be a literal value, or a tuple of (record, key) which will do the fetch_val
+        data: can be a literal value, or a tuple of (record, key) which will do the fetch_val
         """
         data_to_write = data
         if isinstance(data, tuple):
@@ -475,8 +486,14 @@ class ReportSheet(WriterX, SheetSection):
         if num_cols == 0:
             raise Exception('Cannot write data length 0')
         if num_cols > 1:
-            self.ws.merge_range(self.rownum, self.colnum, self.rownum, self.colnum + num_cols - 1,
-                                data_to_write, self.conform_style(style))
+            self.ws.merge_range(
+                self.rownum,
+                self.colnum,
+                self.rownum,
+                self.colnum + num_cols - 1,
+                data_to_write,
+                self.conform_style(style),
+            )
         else:
             # number of cells is one, so no merge needed
             self.write(self.rownum, self.colnum, data_to_write, self.conform_style(style))
@@ -504,7 +521,7 @@ class ReportSheet(WriterX, SheetSection):
 
     def write(self, row, col, data, style=None):
         """wraps WriterX.write, checks row,col tuple against guarded cells
-            data: can be a literal value, or a tuple of (record, key) which will do the fetch_val
+        data: can be a literal value, or a tuple of (record, key) which will do the fetch_val
         """
         data_to_write = data
         if isinstance(data, tuple):
@@ -515,10 +532,10 @@ class ReportSheet(WriterX, SheetSection):
             self.ws.write(row, col, data_to_write, self.conform_style(style))
 
     def awrite(self, data, style=None, nextrow=False):
-        super(ReportSheet, self).awrite(data, style=self.conform_style(style), nextrow=nextrow)
+        super().awrite(data, style=self.conform_style(style), nextrow=nextrow)
 
     def render_header(self):
-        for i in range(self.pre_data_rows):
+        for _ in range(self.pre_data_rows):
             for u in self.units:
                 u.write_header()
             self.nextrow()
@@ -550,7 +567,7 @@ class ReportPortraitSheet(ReportSheet):
 
     def __init__(self, *args, **kwargs):
         kwargs['auto_render'] = False
-        super(ReportPortraitSheet, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self.columns = self.init_columns()
 

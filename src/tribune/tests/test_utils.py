@@ -13,14 +13,14 @@ def test_column_letter():
     assert column_letter(26) == 'Z'
     assert column_letter(27) == 'AA'
     assert column_letter(28) == 'AB'
-    assert column_letter(26*2 + 1) == 'BA'
-    assert column_letter(26*3 + 1) == 'CA'
-    assert column_letter(26**2+26) == 'ZZ'
-    assert column_letter(26**2+27) == 'AAA'
+    assert column_letter(26 * 2 + 1) == 'BA'
+    assert column_letter(26 * 3 + 1) == 'CA'
+    assert column_letter(26**2 + 26) == 'ZZ'
+    assert column_letter(26**2 + 27) == 'AAA'
     assert column_letter(1, is_zero_based=True) == 'B'
 
 
-class TestDeepCopyTupleExcept(object):
+class TestDeepCopyTupleExcept:
     class DoDeepCopy:
         def __init__(self, value):
             self.value = value
@@ -29,7 +29,7 @@ class TestDeepCopyTupleExcept(object):
             return self.value == other.value
 
     class DoNotDeepCopy(DoDeepCopy):
-        def __deepcopy__(self, memodict={}):
+        def __deepcopy__(self, memodict):
             raise Exception('Deep Copy!')
 
     def test_simple(self):
@@ -80,7 +80,7 @@ class TestDeepCopyTupleExcept(object):
     def test_exceptions_are_used(self):
         original = (1, self.DoNotDeepCopy([2, 3, 4]), 5)
 
-        with pytest.raises(Exception):
+        with pytest.raises(Exception, match='Deep Copy!'):
             deepcopy_tuple_except(original)
 
 

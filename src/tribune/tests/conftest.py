@@ -3,11 +3,13 @@ from decimal import Decimal as D
 
 def pytest_configure(config):
     from sqlalchemy import engine_from_config
-    from sqlalchemy.orm import sessionmaker, scoped_session
+    from sqlalchemy.orm import scoped_session, sessionmaker
+
     engine = engine_from_config({'url': 'sqlite:///'}, prefix='')
     session = scoped_session(sessionmaker(bind=engine))
 
     from tribune.tests import entities
+
     entities.meta.bind = engine
     entities.meta.create_all(engine)
     entities.session = session

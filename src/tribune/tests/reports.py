@@ -13,6 +13,7 @@ from tribune import (
     TotaledMixin,
 )
 
+
 """
     Objects for testing normal landscape-layout reports
 """
@@ -67,9 +68,17 @@ class CarSheet(ReportSheet):
 
 
 class DealershipReportRow(PortraitRow):
-    def __init__(self, label=None, comp=None, inc=None, exp=None, net=None,
-                 comp_curr=False, **kwargs):
-        super(DealershipReportRow, self).__init__()
+    def __init__(
+        self,
+        label=None,
+        comp=None,
+        inc=None,
+        exp=None,
+        net=None,
+        comp_curr=False,
+        **kwargs,
+    ):
+        super().__init__()
         self.label = label
         self.comp = comp
         self.comp_curr = comp_curr
@@ -111,13 +120,13 @@ class DealershipTotalRow(DealershipReportRow):
         return self.sheet.combine_style_dicts(
             self.sheet.style_header,
             self.sheet.style_right,
-            {'top': 6}
+            {'top': 6},
         )
 
     def format_component(self):
         return self.sheet.combine_style_dicts(
             self.sheet.style_currency,
-            {'top': 6}
+            {'top': 6},
         )
 
     def format_income(self):

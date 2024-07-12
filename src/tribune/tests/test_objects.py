@@ -1,12 +1,12 @@
-import operator
 from io import BytesIO
+import operator
 from unittest import mock
 
 from blazeutils.datastructures import BlankObject
 from blazeutils.spreadsheets import xlsx_to_reader
 import pytest
-from xlsxwriter import Workbook
 import wrapt
+from xlsxwriter import Workbook
 
 from tribune import (
     LabeledColumn,
@@ -17,32 +17,59 @@ from tribune import (
     SheetSection,
     SheetUnit,
 )
+
 from .entities import Person
-from .reports import CarSheet, CarDealerSheet
+from .reports import CarDealerSheet, CarSheet
 from .utils import find_sheet_col, find_sheet_row
 
 
 def car_data(self):
     return [
-        {'year': 1998, 'make': 'Ford', 'model': 'Taurus', 'style': 'SE Wagon',
-         'color': 'silver', 'book_value': 1500},
-        {'year': 2004, 'make': 'Oldsmobile', 'model': 'Alero', 'style': '4D Sedan',
-         'color': 'silver', 'book_value': 4500},
-        {'year': 2003, 'make': 'Ford', 'model': 'F-150', 'style': 'XL Supercab',
-         'color': 'blue', 'book_value': 8500},
+        {
+            'year': 1998,
+            'make': 'Ford',
+            'model': 'Taurus',
+            'style': 'SE Wagon',
+            'color': 'silver',
+            'book_value': 1500,
+        },
+        {
+            'year': 2004,
+            'make': 'Oldsmobile',
+            'model': 'Alero',
+            'style': '4D Sedan',
+            'color': 'silver',
+            'book_value': 4500,
+        },
+        {
+            'year': 2003,
+            'make': 'Ford',
+            'model': 'F-150',
+            'style': 'XL Supercab',
+            'color': 'blue',
+            'book_value': 8500,
+        },
     ]
 
 
 def dealer_data(self):
     return [
-        {'sale_count': 5, 'sale_income': 75000, 'sale_expense': 25000,
-         'rental_count': 46, 'rental_income': 8600, 'rental_expense': 2900,
-         'lease_count': 27, 'lease_income': 10548, 'lease_expense': 3680,
-         'total_net': 100000},
+        {
+            'sale_count': 5,
+            'sale_income': 75000,
+            'sale_expense': 25000,
+            'rental_count': 46,
+            'rental_income': 8600,
+            'rental_expense': 2900,
+            'lease_count': 27,
+            'lease_income': 10548,
+            'lease_expense': 3680,
+            'total_net': 100000,
+        },
     ]
 
 
-class TestSheetDecl(object):
+class TestSheetDecl:
     @mock.patch('tribune.tests.reports.CarSheet.fetch_records', car_data)
     def test_sheet_units(self):
         sheet = CarSheet(Workbook(BytesIO()))
@@ -100,12 +127,13 @@ class TestSheetDecl(object):
         """This test is kind of hard to set up, so it needs some explanation. A great deal of
         function objects are fine with the deep copy, but this particular case is not. What we
         have is an unbound method (status_render) wrapped in a decorator."""
+
         def status_render(row):
             pass
 
         @wrapt.decorator
         def some_decorator(wrapped, instance, args, kwargs):
-            row, = args
+            (row,) = args
             return wrapped(row)
 
         class DummyUnit(SheetUnit):
@@ -119,9 +147,10 @@ class TestSheetDecl(object):
         """This test is kind of hard to set up, so it needs some explanation. A great deal of
         function objects are fine with the deep copy, but this particular case is not. What we
         have is an static method (status_render) wrapped in a decorator."""
+
         @wrapt.decorator
         def some_decorator(wrapped, instance, args, kwargs):
-            row, = args
+            (row,) = args
             return wrapped(row)
 
         class DummyUnit(SheetUnit):
@@ -136,20 +165,23 @@ class TestSheetDecl(object):
         base_unit.new_instance(None)
 
 
-class TestSheetColumn(object):
+class TestSheetColumn:
     def test_extract_data_no_key(self):
         col = SheetColumn()
         assert col.extract_data({}) == ''
 
     def test_extract_data_attr(self):
         col = SheetColumn('bar')
-        assert col.extract_data(
-            BlankObject(
-                foo=1,
-                bar='something',
-                baz='else',
+        assert (
+            col.extract_data(
+                BlankObject(
+                    foo=1,
+                    bar='something',
+                    baz='else',
+                ),
             )
-        ) == 'something'
+            == 'something'
+        )
 
     def test_extract_data_dict(self):
         col = SheetColumn('bar')
@@ -165,7 +197,7 @@ class TestSheetColumn(object):
         assert col.extract_data(person) == person.firstname
 
     def test_extract_data_sacol_altcolname(self):
-        person = Person.testing_create(lastname=u'foo')
+        person = Person.testing_create(lastname='foo')
         col = SheetColumn(Person.lastname)
         assert col.extract_data(person) == 'foo'
 
@@ -217,7 +249,7 @@ class TestSheetColumn(object):
         assert col.xls_computed_width == 14
 
 
-class TestLabeledColumn(object):
+class TestLabeledColumn:
     def test_header_construction(self):
         col = LabeledColumn('foo\nbar', 'key')
         assert col._init_header == {0: 'foo', 1: 'bar'}
@@ -230,7 +262,7 @@ class TestLabeledColumn(object):
         assert col._init_header == {4: 'foo', 5: 'bar'}
 
 
-class TestOutput(object):
+class TestOutput:
     @mock.patch('tribune.tests.reports.CarSheet.fetch_records', car_data)
     def generate_report(self, reportcls=CarSheet):
         wb = Workbook(BytesIO())
@@ -243,29 +275,35 @@ class TestOutput(object):
         ws = self.generate_report()
         assert ws.cell_value(0, 0) == 'Cars'
 
-    @pytest.mark.parametrize('row,column,value', [
-        (2, 0, ''),
-        (2, 1, 'Year'),
-        (2, 2, 'Make'),
-        (2, 3, 'Model'),
-        (2, 4, 'Style'),
-        (2, 5, 'Color'),
-        (2, 6, 'Blue'),
-        (3, 6, 'Book'),
-    ])
+    @pytest.mark.parametrize(
+        'row,column,value',
+        [
+            (2, 0, ''),
+            (2, 1, 'Year'),
+            (2, 2, 'Make'),
+            (2, 3, 'Model'),
+            (2, 4, 'Style'),
+            (2, 5, 'Color'),
+            (2, 6, 'Blue'),
+            (3, 6, 'Book'),
+        ],
+    )
     def test_column_headings(self, row, column, value):
         ws = self.generate_report()
         assert ws.cell_value(row, column) == value
 
     @pytest.mark.parametrize('data_row, data', enumerate(car_data(None)))
-    @pytest.mark.parametrize('header,key', [
-        ('Year', 'year'),
-        ('Make', 'make'),
-        ('Model', 'model'),
-        ('Style', 'style'),
-        ('Color', 'color'),
-        ('Blue', 'book_value'),
-    ])
+    @pytest.mark.parametrize(
+        'header,key',
+        [
+            ('Year', 'year'),
+            ('Make', 'make'),
+            ('Model', 'model'),
+            ('Style', 'style'),
+            ('Color', 'color'),
+            ('Blue', 'book_value'),
+        ],
+    )
     def test_column_data(self, header, key, data_row, data):
         ws = self.generate_report()
         row = data_row + 4
@@ -313,7 +351,7 @@ class TestOutput(object):
         assert ws.cell_value(0, 0) == 'data'
 
 
-class TestPortraitOutput(object):
+class TestPortraitOutput:
     @mock.patch('tribune.tests.reports.CarDealerSheet.fetch_records', dealer_data)
     def generate_report(self):
         wb = Workbook(BytesIO())
@@ -326,32 +364,38 @@ class TestPortraitOutput(object):
         ws = self.generate_report()
         assert ws.cell_value(0, 0) == 'Dealership'
 
-    @pytest.mark.parametrize('row,column,value', [
-        (3, 0, ''),
-        (3, 1, 'Count'),
-        (3, 2, 'Income'),
-        (3, 3, 'Expense'),
-        (3, 4, 'Net'),
-    ])
+    @pytest.mark.parametrize(
+        'row,column,value',
+        [
+            (3, 0, ''),
+            (3, 1, 'Count'),
+            (3, 2, 'Income'),
+            (3, 3, 'Expense'),
+            (3, 4, 'Net'),
+        ],
+    )
     def test_column_headings(self, row, column, value):
         ws = self.generate_report()
         assert ws.cell_value(row, column) == value
 
-    @pytest.mark.parametrize('row_header,column,value', [
-        ('Sales', 1, 5),
-        ('Sales', 2, 75000),
-        ('Sales', 3, 25000),
-        ('Sales', 4, 50000),
-        ('Rentals', 1, 46),
-        ('Rentals', 2, 8600),
-        ('Rentals', 3, 2900),
-        ('Rentals', 4, 5700),
-        ('Leases', 1, 27),
-        ('Leases', 2, 10548),
-        ('Leases', 3, 3680),
-        ('Leases', 4, 6868),
-        ('Totals', 4, 100000),
-    ])
+    @pytest.mark.parametrize(
+        'row_header,column,value',
+        [
+            ('Sales', 1, 5),
+            ('Sales', 2, 75000),
+            ('Sales', 3, 25000),
+            ('Sales', 4, 50000),
+            ('Rentals', 1, 46),
+            ('Rentals', 2, 8600),
+            ('Rentals', 3, 2900),
+            ('Rentals', 4, 5700),
+            ('Leases', 1, 27),
+            ('Leases', 2, 10548),
+            ('Leases', 3, 3680),
+            ('Leases', 4, 6868),
+            ('Totals', 4, 100000),
+        ],
+    )
     def test_row_data(self, row_header, column, value):
         ws = self.generate_report()
         row = find_sheet_row(ws, row_header, 0)
