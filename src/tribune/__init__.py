@@ -20,16 +20,16 @@ except ImportError:
 
 
 __all__ = [
-    'SheetUnit',
-    'SheetColumn',
-    'SheetPortraitColumn',
-    'SheetSection',
     'BlankColumn',
     'LabeledColumn',
     'PortraitRow',
-    'TotaledMixin',
-    'ReportSheet',
     'ReportPortraitSheet',
+    'ReportSheet',
+    'SheetColumn',
+    'SheetPortraitColumn',
+    'SheetSection',
+    'SheetUnit',
+    'TotaledMixin',
 ]
 
 

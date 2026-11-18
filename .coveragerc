@@ -1,18 +1,13 @@
 # .coveragerc to control coverage.py
 [run]
 branch = True
+omit =
+    src/tribune/version.py
 
-[report]
-# Regexes for lines to exclude from consideration
-exclude_lines =
-    # Have to re-enable the standard pragma
-    pragma: no cover
+source =
+    src/tribune
+    tests/tribune_tests
 
-    # testing assertions usually used with exceptions
-    assert False
-
-    # patterns for running cli
-    cli_entry()
 
 [html]
-directory = ci/coverage-html
+directory = tmp/coverage-html

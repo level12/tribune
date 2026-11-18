@@ -69,7 +69,7 @@ def transaction(f, decorated_obj, args, kwargs):
 
     'ncm' = non class method (version)
     """
-    from tribune.tests.entities import session as dbsess
+    from tribune_tests.entities import session as dbsess
 
     try:
         retval = f(*args, **kwargs)

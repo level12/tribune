@@ -8,7 +8,7 @@ def pytest_configure(config):
     engine = engine_from_config({'url': 'sqlite:///'}, prefix='')
     session = scoped_session(sessionmaker(bind=engine))
 
-    from tribune.tests import entities
+    from tribune_tests import entities
 
     entities.meta.bind = engine
     entities.meta.create_all(engine)

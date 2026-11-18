@@ -85,7 +85,7 @@ def nullable(parser):
 def validate_satisfies(pred, error_message):
     """Validates that a value satisfies the given predicate or issues the given error if it
     doesn't."""
-    return lambda value: (value if pred(value) else raises(SpreadsheetImportError([error_message])))
+    return lambda value: value if pred(value) else raises(SpreadsheetImportError([error_message]))
 
 
 def validate_max_length(maximum):

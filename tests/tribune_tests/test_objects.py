@@ -3,7 +3,8 @@ import operator
 from unittest import mock
 
 from blazeutils.datastructures import BlankObject
-from blazeutils.spreadsheets import xlsx_to_reader
+from blazeutils.spreadsheets import xlsx_to_strio
+import openpyxl
 import pytest
 import wrapt
 from xlsxwriter import Workbook
@@ -21,6 +22,19 @@ from tribune import (
 from .entities import Person
 from .reports import CarDealerSheet, CarSheet
 from .utils import find_sheet_col, find_sheet_row
+
+
+class OpenpyxlSheet:
+    def __init__(self, sheet):
+        self.sheet = sheet
+
+    def cell_value(self, row, column):
+        return self.sheet.cell(row + 1, column + 1).value or ''
+
+
+def openpyxl_sheet(workbook, name):
+    book = openpyxl.load_workbook(xlsx_to_strio(workbook), data_only=True)
+    return OpenpyxlSheet(book[name])
 
 
 def car_data(self):
@@ -70,31 +84,31 @@ def dealer_data(self):
 
 
 class TestSheetDecl:
-    @mock.patch('tribune.tests.reports.CarSheet.fetch_records', car_data)
+    @mock.patch('tribune_tests.reports.CarSheet.fetch_records', car_data)
     def test_sheet_units(self):
         sheet = CarSheet(Workbook(BytesIO()))
         assert len(sheet.units) == 4
 
-    @mock.patch('tribune.tests.reports.CarSheet.fetch_records', car_data)
+    @mock.patch('tribune_tests.reports.CarSheet.fetch_records', car_data)
     def test_section_units(self):
         sheet = CarSheet(Workbook(BytesIO()))
         section = sheet.units[1]
         assert len(section.units) == 3
 
-    @mock.patch('tribune.tests.reports.CarSheet.fetch_records', car_data)
+    @mock.patch('tribune_tests.reports.CarSheet.fetch_records', car_data)
     def test_attribute_values_passed_to_section_instance(self):
         sheet = CarSheet(Workbook(BytesIO()))
         car_model_section = sheet.units[1]
         assert car_model_section.foo == 'bar'
 
-    @mock.patch('tribune.tests.reports.CarSheet.fetch_records', car_data)
+    @mock.patch('tribune_tests.reports.CarSheet.fetch_records', car_data)
     def test_attribute_values_passed_to_column_instance(self):
         sheet = CarSheet(Workbook(BytesIO()))
         car_model_section = sheet.units[1]
         car_year_column = car_model_section.units[0]
         assert car_year_column.xls_width == 15
 
-    @mock.patch('tribune.tests.reports.CarSheet.fetch_records')
+    @mock.patch('tribune_tests.reports.CarSheet.fetch_records')
     def test_filter_args(self, m_fetch):
         CarSheet(Workbook(BytesIO()), filter_arg_a='foo', filter_arg_b='bar')
         m_fetch.assert_called_once_with(arg_a='foo', arg_b='bar')
@@ -263,13 +277,12 @@ class TestLabeledColumn:
 
 
 class TestOutput:
-    @mock.patch('tribune.tests.reports.CarSheet.fetch_records', car_data)
+    @mock.patch('tribune_tests.reports.CarSheet.fetch_records', car_data)
     def generate_report(self, reportcls=CarSheet):
         wb = Workbook(BytesIO())
         ws = wb.add_worksheet(reportcls.sheet_name)
         reportcls(wb, worksheet=ws)
-        book = xlsx_to_reader(wb)
-        return book.sheet_by_name('Car Info')
+        return openpyxl_sheet(wb, 'Car Info')
 
     def test_header(self):
         ws = self.generate_report()
@@ -292,7 +305,7 @@ class TestOutput:
         ws = self.generate_report()
         assert ws.cell_value(row, column) == value
 
-    @pytest.mark.parametrize('data_row, data', enumerate(car_data(None)))
+    @pytest.mark.parametrize('data_row, data', list(enumerate(car_data(None))))
     @pytest.mark.parametrize(
         'header,key',
         [
@@ -352,13 +365,12 @@ class TestOutput:
 
 
 class TestPortraitOutput:
-    @mock.patch('tribune.tests.reports.CarDealerSheet.fetch_records', dealer_data)
+    @mock.patch('tribune_tests.reports.CarDealerSheet.fetch_records', dealer_data)
     def generate_report(self):
         wb = Workbook(BytesIO())
         ws = wb.add_worksheet(CarDealerSheet.sheet_name)
         CarDealerSheet(wb, worksheet=ws)
-        book = xlsx_to_reader(wb)
-        return book.sheet_by_name('Dealership Summary')
+        return openpyxl_sheet(wb, 'Dealership Summary')
 
     def test_header(self):
         ws = self.generate_report()

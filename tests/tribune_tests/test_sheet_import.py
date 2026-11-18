@@ -17,15 +17,12 @@ def test_normalize_text():
 
 
 def parse_records_with(importer):
-    sd_cls = si.SheetData
-    if isinstance(importer, si.XlrdSheetImporter):
-        sd_cls = si.XlrdSheetData
-    return lambda data: list(importer.get_sheet_records(sd_cls.from_nested_iters(data)))
+    return lambda data: list(importer.get_sheet_records(si.SheetData.from_nested_iters(data)))
 
 
-class TestXlrdSheetImport:
+class TestSheetImportCompatibility:
     def test_sheet_import_no_fields(self):
-        parse_records = parse_records_with(si.XlrdSheetImporter([]))
+        parse_records = parse_records_with(si.SheetImporter([]))
 
         assert parse_records([]) == []
         assert parse_records([[]]) == []
@@ -33,7 +30,7 @@ class TestXlrdSheetImport:
 
     def test_sheet_import_simple(self):
         parse_records = parse_records_with(
-            si.XlrdSheetImporter(
+            si.SheetImporter(
                 [
                     si.Field('Name', 'name', p.parse_text),
                 ],
@@ -63,7 +60,7 @@ class TestXlrdSheetImport:
 
     def test_sheet_import_data_validation(self):
         parse_records = parse_records_with(
-            si.XlrdSheetImporter(
+            si.SheetImporter(
                 [
                     si.Field('Name', 'name', p.chain(p.parse_text, p.validate_not_empty)),
                     si.Field('Age', 'age', p.parse_int),
@@ -111,7 +108,7 @@ class TestXlrdSheetImport:
 
     def test_non_string_header(self):
         parse_records = parse_records_with(
-            si.XlrdSheetImporter(
+            si.SheetImporter(
                 [
                     si.Field('Age', 'age', p.parse_int),
                 ],
@@ -123,7 +120,7 @@ class TestXlrdSheetImport:
         )
 
     def test_sheet_import_with_modify_record(self):
-        class TestImport(si.XlrdSheetImporter):
+        class TestImport(si.SheetImporter):
             fields = (si.Field('Name', 'name', p.chain(p.parse_text, p.validate_not_empty)),)
 
             def modify_record(self, record):
@@ -157,11 +154,11 @@ class TestXlrdSheetImport:
 
     def test_sheet_import_data_start_row(self):
         parse_records = parse_records_with(
-            si.XlrdSheetImporter(
+            si.SheetImporter(
                 [
                     si.Field('Is Cool', 'is_cool', p.parse_yes_no),
                 ],
-                data_start_row=3,
+                data_start_row=4,
             ),
         )
 
@@ -181,7 +178,7 @@ class TestXlrdSheetImport:
         )
 
     def test_sheet_import_as_report_sheet(self):
-        importer = si.XlrdSheetImporter(
+        importer = si.SheetImporter(
             (
                 si.Field('Name', 'name', p.chain(p.parse_text, p.validate_not_empty)),
                 si.Field('Job', 'job', p.parse_text),
