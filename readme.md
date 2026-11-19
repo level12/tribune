@@ -1,6 +1,7 @@
 # tribune
 
 [![nox](https://github.com/level12/tribune/actions/workflows/nox.yaml/badge.svg)](https://github.com/level12/tribune/actions/workflows/nox.yaml)
+[![codecov](https://codecov.io/gh/level12/tribune/branch/master/graph/badge.svg)](https://codecov.io/gh/level12/tribune)
 
 Tribune is a reporting library for Flask and other Python web frameworks. It
 allows developers to create Excel report classes with a declarative style
