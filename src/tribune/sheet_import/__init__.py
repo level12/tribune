@@ -67,6 +67,11 @@ def normalize_text(x):
     return str(x).strip().lower()
 
 
+def _is_raw_empty(value):
+    """Return whether a cell is empty before any field parser transforms it."""
+    return value is None or value == ''
+
+
 class Cell:
     """Represents a particular cell on a spreadsheet."""
 
@@ -98,6 +103,41 @@ class SheetDataBase(metaclass=abc.ABCMeta):
     def cell_value(self, cell):
         raise NotImplementedError()
 
+    def iter_rows_until_empty_limit(
+        self,
+        start_row,
+        stop_row,
+        start_col,
+        stop_col,
+        max_empty_rows,
+        cell_cls=Cell,
+    ):
+        """Yield rows until a sufficiently large trailing run of raw-empty rows.
+
+        ``stop_row`` and ``stop_col`` are exclusive. Subclasses may override this to avoid
+        visiting cells that are not physically present.
+        """
+        if max_empty_rows is None:
+            yield from range(start_row, stop_row)
+            return
+
+        replayed_empty_rows = 0
+        pending_empty_rows = []
+        for row in range(start_row, stop_row):
+            values = (self.cell_value(cell_cls(row, col)) for col in range(start_col, stop_col))
+            if all(_is_raw_empty(value) for value in values):
+                pending_empty_rows.append(row)
+                if replayed_empty_rows + len(pending_empty_rows) >= max_empty_rows:
+                    return
+                continue
+
+            yield from pending_empty_rows
+            replayed_empty_rows += len(pending_empty_rows)
+            pending_empty_rows.clear()
+            yield row
+
+        yield from pending_empty_rows
+
 
 class SheetData(SheetDataBase):
     def __init__(self, sheet):
@@ -107,10 +147,67 @@ class SheetData(SheetDataBase):
         return self.sheet.max_row
 
     def cell_value(self, cell: Cell):
+        # Worksheet.cell() creates missing cells. Use the cells already loaded from the workbook
+        # when possible so a sparse sheet does not grow as it is read.
+        cells = getattr(self.sheet, '_cells', None)
+        if cells is not None:
+            stored_cell = cells.get((cell.row, cell.column))
+            return None if stored_cell is None else stored_cell.value
+
         try:
             return self.sheet.cell(cell.row, cell.column).value
         except IndexError:
             return ''
+
+    def iter_rows_until_empty_limit(
+        self,
+        start_row,
+        stop_row,
+        start_col,
+        stop_col,
+        max_empty_rows,
+        cell_cls=Cell,
+    ):
+        if max_empty_rows is None:
+            yield from range(start_row, stop_row)
+            return
+
+        cells = getattr(self.sheet, '_cells', None)
+        if cells is None:
+            yield from super().iter_rows_until_empty_limit(
+                start_row,
+                stop_row,
+                start_col,
+                stop_col,
+                max_empty_rows,
+                cell_cls,
+            )
+            return
+
+        populated_rows = sorted(
+            {
+                row
+                for (row, col), cell in cells.items()
+                if start_row <= row < stop_row
+                and start_col <= col < stop_col
+                and not _is_raw_empty(cell.value)
+            },
+        )
+
+        previous_populated_row = start_row - 1
+        replayed_empty_rows = 0
+        for row in populated_rows:
+            empty_row_count = row - previous_populated_row - 1
+            if replayed_empty_rows + empty_row_count >= max_empty_rows:
+                return
+            yield from range(previous_populated_row + 1, row)
+            replayed_empty_rows += empty_row_count
+            yield row
+            previous_populated_row = row
+
+        trailing_empty_row_count = stop_row - previous_populated_row - 1
+        if replayed_empty_rows + trailing_empty_row_count < max_empty_rows:
+            yield from range(previous_populated_row + 1, stop_row)
 
     @classmethod
     def from_nested_iters(cls, data):
@@ -177,6 +274,9 @@ class SheetImporter:
     is_zero_based = False
     cell_cls = Cell
     fields = ()  # Ordered iterable of Field tuples
+    max_rows = 2**20  # Maximum number of rows supported by the XLSX format.
+    # Sheet-wide raw-empty-row budget. Set to None to intentionally disable the short-circuit.
+    max_empty_rows = 1000
 
     def __init__(self, fields=None, data_start_row=None):
         """
@@ -230,19 +330,34 @@ class SheetImporter:
         )
 
     def _parse_sheet_data(self, sheet):
-        """Parses only the data rows from a sheet and returns aggregated errors or valuse as an
-        ErrorOrValue tuple."""
+        """Parse data rows until the configured raw-empty row limit is reached."""
+        iter_rows = getattr(sheet, 'iter_rows_until_empty_limit', None)
+        if iter_rows is None:
+            # Preserve support for objects implementing the historical minimum SheetData API
+            # without inheriting from SheetDataBase.
+            def iter_rows(*args):
+                return SheetDataBase.iter_rows_until_empty_limit(sheet, *args)
+
         return [
             self._parse_row(sheet, row)
-            for row in range(
+            for row in iter_rows(
                 self.data_start_row,
                 len(sheet) + (1 if not self.is_zero_based else 0),
+                self.data_start_col,
+                self.data_start_col + len(self.fields),
+                self.max_empty_rows,
+                self.cell_cls,
             )
         ]
 
     def _parse_sheet(self, sheet):
         """Parses a sheet (including the headers) and returns aggregated errors or values as an
         ErrorOrValue tuple."""
+        if len(sheet) > self.max_rows:
+            raise SpreadsheetImportError(
+                [f'Spreadsheet exceeds the maximum supported row count of {self.max_rows}.'],
+            )
+
         header_errors = self._get_header_errors(sheet)
         if header_errors:
             return [ErrorOrValue(header_errors, None)]

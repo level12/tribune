@@ -20,6 +20,138 @@ def parse_records_with(importer):
     return lambda data: list(importer.get_sheet_records(si.SheetData.from_nested_iters(data)))
 
 
+def test_sheet_data_cell_value_does_not_create_missing_cells():
+    worksheet = si.openpyxl.Workbook().active
+    sheet = si.SheetData(worksheet)
+
+    assert sheet.cell_value(si.Cell(1000, 10)) is None
+    assert worksheet._cells == {}
+
+
+def test_sparse_sheet_stops_at_raw_empty_row_limit(monkeypatch):
+    worksheet = si.openpyxl.Workbook().active
+    worksheet['A1'] = 'Name'
+    worksheet['A2'] = 'first'
+    worksheet['A1002'] = 'within limit'
+    worksheet['A2003'] = 'after limit'
+    worksheet['A1048576'] = 'at XLSX row limit'
+    existing_cells = dict(worksheet._cells)
+
+    def fail_if_cell_is_created(*args, **kwargs):
+        raise AssertionError('sparse import must not create worksheet cells')
+
+    monkeypatch.setattr(worksheet, 'cell', fail_if_cell_is_created)
+
+    class Importer(si.SheetImporter):
+        fields = (si.Field('Name', 'name', p.parse_text),)
+
+        def modify_record(self, record):
+            return record if record['name'] else None
+
+    importer = Importer()
+
+    assert list(importer.get_sheet_records(si.SheetData(worksheet))) == [
+        {'name': 'first'},
+        {'name': 'within limit'},
+    ]
+    assert worksheet._cells == existing_cells
+
+
+def test_sparse_sheet_uses_cumulative_empty_row_budget():
+    worksheet = si.openpyxl.Workbook().active
+    worksheet['A1'] = 'Name'
+    for row in range(2, 13, 2):
+        worksheet.cell(row, 1, f'row {row}')
+
+    class Importer(si.SheetImporter):
+        fields = (si.Field('Name', 'name', p.parse_text),)
+        max_empty_rows = 5
+
+        def __init__(self):
+            super().__init__()
+            self.parsed_rows = []
+
+        def _parse_row(self, sheet, row):
+            self.parsed_rows.append(row)
+            return super()._parse_row(sheet, row)
+
+    importer = Importer()
+
+    assert list(importer.get_sheet_records(si.SheetData(worksheet))) == [
+        {'name': f'row {row}' if row % 2 == 0 else ''} for row in range(2, 11)
+    ]
+    assert importer.parsed_rows == list(range(2, 11))
+
+
+def test_sparse_sheet_can_disable_empty_row_budget():
+    worksheet = si.openpyxl.Workbook().active
+    worksheet['A1'] = 'Name'
+    worksheet['A2'] = 'first'
+    worksheet['A6'] = 'after gap'
+
+    class Importer(si.SheetImporter):
+        fields = (si.Field('Name', 'name', p.parse_text),)
+        max_empty_rows = None
+
+        def __init__(self):
+            super().__init__()
+            self.parsed_rows = []
+
+        def _parse_row(self, sheet, row):
+            self.parsed_rows.append(row)
+            return super()._parse_row(sheet, row)
+
+        def modify_record(self, record):
+            return record if record['name'] else None
+
+    importer = Importer()
+
+    assert list(importer.get_sheet_records(si.SheetData(worksheet))) == [
+        {'name': 'first'},
+        {'name': 'after gap'},
+    ]
+    assert importer.parsed_rows == [2, 3, 4, 5, 6]
+
+
+def test_sheet_import_rejects_more_rows_than_xlsx_supports():
+    class OversizedSheet(si.SheetDataBase):
+        def __len__(self):
+            return 2**20 + 1
+
+        def cell_value(self, cell):
+            raise AssertionError('oversized sheets must be rejected before cells are read')
+
+    importer = si.SheetImporter([si.Field('Name', 'name', p.parse_text)])
+
+    assert_import_errors(
+        {'Spreadsheet exceeds the maximum supported row count of 1048576.'},
+        lambda: importer.get_sheet_records(OversizedSheet()),
+    )
+
+
+def test_sheet_import_supports_minimum_sheet_data_api():
+    class MinimumSheetData:
+        def __init__(self):
+            self.data = [['Name'], ['first'], [], ['second']]
+
+        def __len__(self):
+            return len(self.data)
+
+        def cell_value(self, cell):
+            try:
+                return self.data[cell.row - 1][cell.column - 1]
+            except IndexError:
+                return None
+
+    importer = si.SheetImporter([si.Field('Name', 'name', p.parse_text)])
+
+    assert list(importer.get_sheet_records(MinimumSheetData())) == [
+        {'name': 'first'},
+        {'name': ''},
+        {'name': 'second'},
+    ]
+
+
 class TestSheetImportCompatibility:
     def test_sheet_import_no_fields(self):
         parse_records = parse_records_with(si.SheetImporter([]))

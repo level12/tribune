@@ -1,6 +1,18 @@
 Changelog
 =========
 
+0.20261119.2 released 2026-11-19
+--------------------------------
+
+- prevent sparse XLSX imports from creating large numbers of empty cells
+
+  - imports stop without an error when they encounter a sheet-wide total of 1,000 raw-empty rows
+    in the configured columns; applications can change the budget with
+    ``SheetImporter.max_empty_rows`` or set it to ``None`` to disable the short-circuit
+  - ``SheetImporter.max_rows`` defaults to the XLSX limit of 1,048,576 rows and can be
+    overridden for custom sheet implementations
+
+
 0.20261119.1 released 2026-11-19
 --------------------------------
 
