@@ -6,7 +6,7 @@ Unreleased
 
 - update the project to the current Coppy layout with uv, Nox, prek, and
   GitHub Actions
-- support and test Python 3.12 through 3.14
+- support and test Python 3.12 through 3.15
 - remove the deprecated xlrd reader and use openpyxl exclusively for imports
 
 
