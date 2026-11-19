@@ -1,13 +1,80 @@
 [build-system]
 requires = [
     'hatchling',
-    'hatch-requirements-txt',
-    'hatch-regex-commit',
 ]
 build-backend = 'hatchling.build'
 
 
 [project]
 name = 'tribune'
-authors = [{name = 'Matt Lewellyn', email = 'matt.lewellyn@level12.io'}]
-dynamic = ['dependencies', 'optional-dependencies', 'version']
+description = 'Declarative Excel reports for Flask and other Python applications.'
+authors = [
+    {name = 'Matt Lewellyn', email = 'matt.lewellyn@level12.io'},
+]
+requires-python = '>=3.12'
+dynamic = ['version']
+readme = 'readme.md'
+classifiers = [
+    'Development Status :: 4 - Beta',
+    'Operating System :: OS Independent',
+    'Programming Language :: Python :: 3',
+    'Programming Language :: Python :: 3.12',
+    'Programming Language :: Python :: 3.13',
+    'Programming Language :: Python :: 3.14',
+    'Programming Language :: Python :: 3.15',
+]
+dependencies = [
+    'BlazeUtils',
+    'openpyxl',
+    'XlsxWriter',
+]
+
+
+[project.urls]
+Homepage = 'https://github.com/level12/tribune'
+Repository = 'https://github.com/level12/tribune'
+
+
+[project.optional-dependencies]
+test = [
+    'pytest',
+    'pytest-cov',
+    'SQLAlchemy',
+    'wrapt',
+]
+
+
+[dependency-groups]
+dev = [
+    {include-group = "pytest"},
+    {include-group = "prek"},
+    {include-group = "audit"},
+    {include-group = "build"},
+    {include-group = "nox"},
+    'click',
+    'ruff==0.16.2',
+]
+# Used by nox
+pytest = [
+    'pytest',
+    'pytest-cov',
+    'SQLAlchemy',
+    'wrapt',
+]
+# Used by nox
+prek = [
+    'prek',
+]
+# Used by nox
+audit = [
+    'pip-audit',
+]
+# Used by nox
+build = [
+    'build',
+    'twine',
+]
+# Used by CI
+nox = [
+    'nox',
+]

@@ -1,6 +1,15 @@
 Changelog
 =========
 
+0.20261119.1 released 2026-11-19
+--------------------------------
+
+- update the project to the current Coppy layout with uv, Nox, prek, and
+  GitHub Actions
+- support and test Python 3.12 through 3.15
+- remove the deprecated xlrd reader and use openpyxl exclusively for imports
+
+
 0.3.0 released 2024-04-23
 -------------------------
 

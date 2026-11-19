@@ -27,23 +27,12 @@ import abc
 from collections import namedtuple
 from io import BytesIO
 from typing import BinaryIO
-import warnings
 from zipfile import BadZipFile
 
-from blazeutils.spreadsheets import xlsx_to_reader, xlsx_to_strio
+from blazeutils.spreadsheets import xlsx_to_strio
+import openpyxl
+from openpyxl.utils.exceptions import InvalidFileException
 from xlsxwriter import Workbook
-
-
-try:
-    import openpyxl
-    from openpyxl.utils.exceptions import InvalidFileException
-except ImportError:
-    openpyxl = None
-
-try:
-    import xlrd
-except ImportError:
-    xlrd = None
 
 import tribune
 
@@ -64,37 +53,7 @@ class SpreadsheetImportError(Exception):
         return f'<SpreadsheetImportError: {self.errors}>'
 
 
-def xlrd_workbook_safe_open(file_handle):
-    warnings.warn(
-        'xlrd support is deprecated and will be removed in a future version',
-        DeprecationWarning,
-        stacklevel=2,
-    )
-
-    try:
-        return xlrd.open_workbook(file_contents=file_handle.read())
-    except xlrd.biffh.XLRDError as e:
-        msg = str(e)
-        # we don't want to screen all xlrd load errors, but a few common ones need to be trapped
-        #   for user-friendliness
-        if (
-            'unsupported format' in msg.lower()
-            or 'not supported' in msg.lower()
-            or 'not a known type of workbook' in str(e).lower()
-        ):
-            raise SpreadsheetImportError(
-                ['File format is not recognized. Please upload an Excel file (.xlsx or .xls).'],
-            ) from e
-        elif 'file size is 0 bytes' in msg.lower():
-            raise SpreadsheetImportError(['File is empty.']) from e
-        else:
-            raise SpreadsheetImportError([msg]) from e
-
-
 def workbook_safe_open(filename_or_filelike: str | BinaryIO):
-    if not openpyxl:
-        return xlrd_workbook_safe_open(filename_or_filelike)
-
     try:
         return openpyxl.load_workbook(filename_or_filelike, data_only=True)
     except (BadZipFile, InvalidFileException) as e:
@@ -126,13 +85,6 @@ class Cell:
         return column_letter(self.column, self.is_zero_based) + str(
             self.row + (1 if self.is_zero_based else 0),
         )
-
-
-class XlrdCell(Cell):
-    """Represents a single cell when reading sheets with xlrd, which uses
-    0-based indices."""
-
-    is_zero_based = True
 
 
 class SheetDataBase(metaclass=abc.ABCMeta):
@@ -178,42 +130,6 @@ class SheetData(SheetDataBase):
         workbook = openpyxl.load_workbook(xlsx_to_strio(workbook))
         sheet = workbook[workbook.sheetnames[0]]
         return SheetData(sheet)
-
-
-class XlrdSheetData(SheetDataBase):
-    def __init__(self, sheet):
-        warnings.warn(
-            'xlrd support is deprecated and will be removed in a future version',
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        self.sheet = sheet
-
-    def __len__(self):
-        return self.sheet.nrows
-
-    def cell_value(self, cell):
-        try:
-            return self.sheet.cell_value(cell.row, cell.column)
-        except IndexError:
-            return ''
-
-    @classmethod
-    def from_nested_iters(cls, data):
-        """Builds an XlrdSheetData from nested iterables.
-
-        param data: is nested iterables representing data for each cell.
-                    For example, `[('A1', 'B1'), ('A2', 'B2')]` represents two rows and two columns
-                    of data.
-        """
-        workbook = Workbook(BytesIO())
-        sheet = workbook.add_worksheet('test')
-
-        for row, row_data in enumerate(data):
-            for column, cell_data in enumerate(row_data):
-                sheet.write(row, column, cell_data)
-
-        return XlrdSheetData(xlsx_to_reader(workbook).sheet_by_index(0))
 
 
 class NestedItersSheetData(SheetDataBase):
@@ -373,12 +289,3 @@ class SheetImporter:
                 return []
 
         return NewReportSheet
-
-
-class XlrdSheetImporter(SheetImporter):
-    """A base class for defining how to parse a single spreadsheet."""
-
-    data_start_row = 1  # xlrd rows are 0-based
-    data_start_col = 0
-    cell_cls = XlrdCell
-    is_zero_based = True
